@@ -12,7 +12,7 @@ YOFFSET=$6
 
 PROJECT_LOC=../faceswap
 SRC_DATA_LOC=$PROJECT_LOC/datasets/data$AB/$NAME
-DST_DATA_LOC=$PROJECT_LOC/datasets/data$AB/$NAME-crop-resize
+DST_DATA_LOC=$PROJECT_LOC/datasets/data$AB/$NAME-faces
 
 mkdir -p $DST_DATA_LOC
 
