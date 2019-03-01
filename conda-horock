@@ -1,0 +1,9 @@
+# Use this file
+#
+# . conda-horock
+#
+#  or
+#
+# source conda-horock
+#
+conda activate horock
