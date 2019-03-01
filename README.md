@@ -19,6 +19,14 @@ Find a pair of videos and save as the `.mp4` format to the `workspace` folder.
 ## Use scripts
 Go to the `scripts` folder to start. This folder must be your workspace folder.
 
+## Initialize datasets folders
+If you first use this system, you must initialize datasets folders.
+
+```
+$ bash init_dataset_folders
+```
+This script creates `faceswap/datasets/` and `Recycle-GAN/datasets/faces/` folder.
+
 ### Convert mp4 to images
 
 - gen_images_data.sh: This will convert a video file to `%05d.png` images. The output images will be at `faceswap/datasets/dataA/actor_name/` or `faceswap/datasets/dataB/target_name`.
