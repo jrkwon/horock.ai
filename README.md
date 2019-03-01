@@ -6,6 +6,19 @@ The total length of a video that has a face is at least five minutes. The interv
  - 9,000 images of a face for training. This is about 5 minutes in 30 fps.
  - 1,000 images of a face to test. This is the about 0.5-minute length.
 
+## Some examples
+
+Stopped the trainings around the 16th epoch.
+
+- Real Taeri --> Fake IU
+[![taeri-iu](https://img.youtube.com/vi/k0CE0uVoe_U/0.jpg)](https://youtu.be/k0CE0uVoe_U)
+- Real IU --> Fake Taeri
+ [![iu-taeri](https://img.youtube.com/vi/VVu2sCOiOc8/0.jpg)](https://youtu.be/VVu2sCOiOc8)
+- Real Taeho --> Fake Jaein
+ [![taeho-jaein](https://img.youtube.com/vi/nFbAqEHDg4Y/0.jpg)](https://youtu.be/nFbAqEHDg4Y)
+- Real Jaein --> Fake Taeho
+ [![jaein-taeho](https://img.youtube.com/vi/YqYbZoaZ3cw/0.jpg)](https://youtu.be/YqYbZoaZ3cw)
+
 ## Video preparation 
 Find a pair of videos and save as the `.mp4` format to the `workspace` folder.
 
