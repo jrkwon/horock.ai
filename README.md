@@ -10,13 +10,13 @@ The total length of a video that has a face is at least five minutes. The interv
 
 Stopped the trainings around the 16th epoch.
 
-- Real Taeri --> Fake IU
+### Real Taeri --> Fake IU
 [![taeri-iu](https://img.youtube.com/vi/k0CE0uVoe_U/0.jpg)](https://youtu.be/k0CE0uVoe_U)
-- Real IU --> Fake Taeri
+### Real IU --> Fake Taeri
  [![iu-taeri](https://img.youtube.com/vi/VVu2sCOiOc8/0.jpg)](https://youtu.be/VVu2sCOiOc8)
-- Real Taeho --> Fake Jaein
+### Real Taeho --> Fake Jaein
  [![taeho-jaein](https://img.youtube.com/vi/nFbAqEHDg4Y/0.jpg)](https://youtu.be/nFbAqEHDg4Y)
-- Real Jaein --> Fake Taeho
+### Real Jaein --> Fake Taeho
  [![jaein-taeho](https://img.youtube.com/vi/YqYbZoaZ3cw/0.jpg)](https://youtu.be/YqYbZoaZ3cw)
 
 ## Video preparation 
