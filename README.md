@@ -74,9 +74,9 @@ $ bash crop_images.sh B actor 270 270 480 70
 Do this manually. You may use `face_recogntion` to classify faces.
 After the recognition, you may still need to do the manual job.
 
-### Making training and test datasets
+### Making datasets
 
-Set aside around 1,000 face images from each of the actor and target.
+Set aside around 1,000 face images from each of the actor and target. The image files must be located at the `faceswap/datasets/dataA/actor-fcaces-test` and `faceswap/datasets/dataB/target-faces-test'.
 
 #### Make training datasets
 
