@@ -79,14 +79,6 @@ stamps/genimages-$(NAME): $(DATA_LOC)/$(NAME).mp4
 	ffmpeg -hide_banner -i $(DATA_LOC)/$(NAME).mp4 -vf fps=$(FPS) $(DATA_LOC)/$(NAME)/%05d.png
 	touch $@
 
-stamps/crop-$(NAME): stamps/genimages-$(NAME)
-	mkdir -p $(DATA_LOC)/data$(AB)/$(NAME)-crop-resize
-	mogrify -path $(DATA_LOC)/data$(AB)/$(NAME)-crop-resize \
-		-crop $(CROPAREA) \
-		-resize 256x256^ \
-		$(DATA_LOC)/data$(AB)/$(NAME)/*.png
-	touch $@
-
 $(DATA_LOC)/$(NAME).mp4:
 	@if test ! -f $(DATA_LOC)/$(NAME).mp4; then echo "\nYou need $(DATA_LOC)/$(NAME).mp4\n"; exit 1; fi
 
