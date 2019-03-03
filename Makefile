@@ -60,14 +60,15 @@ data:
 
 extract: setup-condaenv stamps/extract-$(NAME)
 
-stamps/extract-$(NAME): setup-condaenv stamps/splitscenes-$(NAME)
+stamps/extract-$(NAME): setup-condaenv stamps/facetag-$(NAME)
+	bash ./scripts/facecrop.sh $(DATA_LOC)/$(NAME)-scenes $(DATA_LOC)/$(NAME)-faces stamps/facetag-$(NAME)
 	touch $@
 	
-astamps/extract: stamps/crop-$(NAME)
-	python faceswap/faceswap.py extract -i $(DATA_LOC)/data$(AB)/$(NAME) -o $(DATA_LOC)/data$(AB)/$(NAME)/extracted -D mtcnn -r 45 -ae -mp
+stamps/facetag-$(NAME): stamps/splitscenes-$(NAME) scripts/facetag.sh
+	bash ./scripts/facetag.sh $(NAME) $(DATA_LOC) $@
 
 stamps/splitscenes-$(NAME): stamps/scenes-$(NAME)
-	bash ./scripts/splitscenes.sh $(DATA_LOC)/$(NAME) stamps/scenes-$(NAME)
+	bash ./scripts/splitscenes.sh $(DATA_LOC)/$(NAME) $(DATA_LOC)/$(NAME)-scenes stamps/scenes-$(NAME)
 	touch $@
 
 stamps/scenes-$(NAME): stamps/genimages-$(NAME)
@@ -99,4 +100,4 @@ clean-all: clean
 
 clean-data:
 	rm -f stamps/splitscenes-* stamps/genimages-*
-	rm -rf datasets/dataA/* datasets/dataB/*
+	rm -rf datasets/*-scenes

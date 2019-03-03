@@ -1,37 +1,45 @@
 #!/bin/bash
 
 INDIR="$1"
-PROBES="$2"
+OUTDIR="$2"
+PROBES="$3"
 
-if test -z "$INDIR"; then
-	echo "Usage: $0 <png-extracted-dir> <ffprob result>"
+if test -z "$INDIR" -o -z "$OUTDIR" -o -z "$PROBES"; then
+	echo "Usage: $0 <png-extracted-dir> <output-dir> <ffprob result>"
 	exit 1
 fi
 
-DIRCOUNT=1
-COUNT=1
 while read LINE
 do
 	while read -d '|' KV
 	do
 		IFS="=" read KEY ENDFRAME <<< "$KV"
-		if test "$KEY" = "pkt_pts"; then
-			SUBDIR=$(printf "%04d" $DIRCOUNT)
-			echo "Scene #$SUBDIR ..."
-			mkdir -p "$INDIR/$SUBDIR/"
-			while test "$COUNT" -le "$ENDFRAME"
-			do
-				IMGFILE="$(printf "%05d" $COUNT).png"
-				mv "$INDIR/$IMGFILE" "$INDIR/$SUBDIR/$IMGFILE"
-				let COUNT++
-			done
-			let DIRCOUNT++
+		if test "$KEY" != "pkt_pts"; then
+			continue
 		fi
+		echo $ENDFRAME
 	done <<< "$LINE"
-done < "$PROBES"
+done < "$PROBES" > "$PROBES.1"
+( cd $INDIR; ls [0-9]*.png ) | sort | tail -1 | tr -cd '0-9' >> "$PROBES.1"
 
-# Move remains
-SUBDIR=$(printf "%04d" $DIRCOUNT)
-echo "Scene #$SUBDIR ..."
-mkdir -p "$INDIR/$SUBDIR"
-mv "$INDIR"/*.png "$INDIR/$SUBDIR/"
+DIRCOUNT=1
+COUNT=1
+NAME=$(basename $INDIR)
+while read ENDFRAME
+do
+	SUBDIR=$(printf "%04d" $DIRCOUNT)
+	echo "Scene #$SUBDIR ..."
+	mkdir -p "$OUTDIR/$SUBDIR/"
+	while test $COUNT -le $ENDFRAME
+	do
+		IMGFILE="$(printf "%05d" $COUNT).png"
+		if test -f "$INDIR/$IMGFILE"; then
+			ln -sf "../../$NAME/$IMGFILE" "$OUTDIR/$SUBDIR/"
+		else
+			echo "Oops $INDIR/IMGFILE missing."
+		fi
+		let COUNT++
+	done
+	let DIRCOUNT++
+done < "$PROBES.1"
+
