@@ -6,4 +6,34 @@
 #
 # source conda-horock
 #
+
 conda activate horock
+
+for viewer in imgcat fim fbi
+do
+	if which $viewer >/dev/null 2>/dev/null; then
+		IMGVIEW=$viewer
+		break
+	fi
+done
+browse() {
+	STEP=${1:-100}
+	FROM=${2:-0}
+	TO=${3:-0}
+	COUNT=0
+	if test "$STEP" = "-h"; then
+		echo "browse [<step; 100> [<from index> [<to index>]]]"
+		return
+	fi
+	ls | while read f
+	do
+		let 'COUNT++'
+		if test $FROM -gt $COUNT; then continue; fi
+		if test $TO -gt 0 -a $COUNT -ge $TO; then break; fi
+
+		if test $(($COUNT % $STEP)) = 0; then
+			echo $COUNT: $f
+			$IMGVIEW $f
+		fi
+	done
+}
