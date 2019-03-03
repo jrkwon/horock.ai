@@ -39,7 +39,7 @@ stamps/condaenv: environment.yml
 
 stamps/condainst: $(ANACONDAINST)
 	@if which conda; then \
-		echo 'Already conda installed' \
+		echo 'Already conda installed'; \
 	else \
 		 bash +x $(ANACONDAINST) && exit 1; \
 	fi
