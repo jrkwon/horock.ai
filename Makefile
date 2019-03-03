@@ -41,12 +41,13 @@ stamps/condainst: $(ANACONDAINST)
 	if which conda; then \
 		echo 'Already conda installed' \
 	else \
-		 bash +x $(ANACONDAINST); \
+		 bash +x $(ANACONDAINST) && exit 1; \
 	fi
 	touch $@
 
 $(ANACONDAINST):
 	mkdir -p `dirname $(ANACONDAINST)`
+	@if which curl 2>/dev/null >&2; then exit 0; else echo "You need curl, (e.g. ubuntu, sudo apt install curl)" && exit 1; fi
 	curl $(ANACONDAURL) > $@
 
 ## Setup Data
