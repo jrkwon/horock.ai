@@ -24,11 +24,17 @@ dependencies:
 - zlib=1.2.8=3
 - pip:
   - absl-py==0.7.0
+  - asn1crypto==0.24.0
   - astor==0.7.1
   - astroid==2.1.0
   - backports.weakref==1.0rc1
   - bleach==1.5.0
-#  - certifi==2018.11.29
+  - certifi==2018.8.24
+  - cffi==1.11.5
+  - chardet==3.0.4
+  - cryptography==2.3.1
+  - cryptography-vectors==2.3.1
+  - Cython==0.28.5
   - Click==7.0
   - cloudpickle==0.7.0
   - cmake==3.13.3
@@ -36,6 +42,7 @@ dependencies:
   - dask==1.1.1
   - decorator==4.3.2
   - dlib==19.16.0
+  - dominate==2.3.5
   - face-recognition==1.2.3
   - face-recognition-models==0.3.0
   - ffmpy==0.2.2
@@ -44,6 +51,7 @@ dependencies:
   - h5py==2.8.0
   - html5lib==0.9999999
   - imutils==0.4.3
+  - idna==2.7
   - isort==4.3.4
   - Keras==2.2.4
   - Keras-Applications==1.0.7
@@ -53,30 +61,46 @@ dependencies:
   - markdown==3.0.1
   - matplotlib==2.2.2
   - mccabe==0.6.1
+  - mkl-fft==1.0.6
+  - mkl-random==1.0.1.1
   - networkx==2.2
-  - numpy==1.15.4
+  - numpy==1.15.1
   - nvidia-ml-py3==7.352.0
+  - olefile==0.46
   - opencv-python==4.0.0.21
   - pathlib==1.0.1
   - Pillow==5.4.1
+  - pycparser==2.19
   - protobuf==3.6.1
   - psutil==5.5.0
   - pylint==2.2.2
+  - pyOpenSSL==18.0.0
   - pyparsing==2.3.1
+  - PySocks==1.6.8
+  - pyzmq==17.1.2
   - python-dateutil==2.8.0
   - pytz==2018.9
   - PyWavelets==1.0.1
   - PyYAML==3.13
+  - requests==2.19.1
   - scandir==1.7
   - scikit-image==0.14.2
   - scikit-learn==0.20.2
   - scipy==1.2.0
   - six==1.12.0
+  - slidingwindow==0.0.13
   - tensorboard==1.11.0
   - tensorflow-gpu==1.11.0
   - termcolor==1.1.0
   - toolz==0.9.0
+  - torch==0.4.1
+  - torchfile==0.1.0
+  - torchvision==0.2.1
+  - tornado==5.1.1
   - tqdm==4.30.0
   - typed-ast==1.2.0
+  - urllib3==1.23
+  - visdom==0.1.8.8
+  - websocket-client==0.53.0
   - werkzeug==0.14.1
   - wrapt==1.11.1

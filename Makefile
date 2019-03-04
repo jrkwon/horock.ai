@@ -55,8 +55,8 @@ $(ANACONDAINST):
 .PHONY: data
 
 data:
-	make extract AB=A NAME=taeri
-	make extract AB=B NAME=iu
+	make extract AB=A NAME=taeho
+	make extract AB=B NAME=jaein
 
 extract: setup-condaenv stamps/extract-$(NAME)
 

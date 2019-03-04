@@ -1,8 +1,4 @@
 #!/bin/bash
 
-PROJECT_LOC=../Recycle-GAN
-
-source activate recycle-gan
-cd $PROJECT_LOC
-
+conda activate horock
 python -m visdom.server

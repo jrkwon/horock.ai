@@ -9,6 +9,8 @@ NAME_A=$1
 NAME_B=$2
 NAMES=$NAME_A-$NAME_B
 
-bash sub_make_triplet_copy.sh A $NAME_A $NAME_B
-bash sub_make_triplet_copy.sh B $NAME_A $NAME_B 
+SCRIPTS=scripts
+
+bash $SCRIPTS/sub_make_triplet_copy.sh A $NAME_A $NAME_B
+bash $SCRIPTS/sub_make_triplet_copy.sh B $NAME_A $NAME_B 
 

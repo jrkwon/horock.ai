@@ -11,11 +11,11 @@ NAMES=$NAME_A-$NAME_B
 NUM_TEST_IMAGES=$3
 GPU_ID=$4
 
-MAIN_LOC=horock.ai
-PROJECT_LOC=../Recycle-GAN
+PROJECT_LOC=Recycle-GAN
+DATA_LOC=../datasets/$NAMES
 cd $PROJECT_LOC
-source activate recycle-gan
-python test.py --dataroot ./datasets/faces/$NAMES --name $NAMES --model cycle_gan  --which_model_netG resnet_6blocks   --dataset_mode unaligned  --no_dropout --gpu $GPU_ID  --how_many $NUM_TEST_IMAGES  --loadSize 256
+#source activate recycle-gan
+python test.py --dataroot $DATA_LOC --name $NAMES --model cycle_gan  --which_model_netG resnet_6blocks   --dataset_mode unaligned  --no_dropout --gpu $GPU_ID  --how_many $NUM_TEST_IMAGES  --loadSize 256
 
-cd ../$MAIN_LOC 
-source deactivate
+cd .. 
+#source deactivate
