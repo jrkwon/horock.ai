@@ -18,7 +18,7 @@ elif [ $DIRECTION = "BA" ]; then
     SRC=B
     DST=A
 fi
-PROJECT_LOC=../Recycle-GAN
+PROJECT_LOC=Recycle-GAN
 REAL_DATA=$PROJECT_LOC/results/$NAMES/test_latest/images/%05d_real_$SRC.png
 REAL_OUTPUT=$PROJECT_LOC/results/$NAMES/real_$SRC.mp4
 FAKE_DATA=$PROJECT_LOC/results/$NAMES/test_latest/images/%05d_fake_$DST.png
