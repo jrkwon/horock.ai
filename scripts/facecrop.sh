@@ -18,10 +18,10 @@ CPUS=${CPUS:-4}
 trap 'killall mogrify; exit' SIGINT
 while read subdir w h left top
 do
-	let 'w2 = w * 3'
-	let 'h2 = h * 3'
-	let 'top2 = top - (h/2)'
-	let 'left2 = left - w'
+	let 'w2 = w * 2'
+	let 'h2 = h * 2'
+	let 'top2 = top - (h*2/5)'
+	let 'left2 = left - (w/2)'
 	echo "Cropping $INDIR/$subdir: ${w}x${h}+${left}+${top} ${w2}x${h2}+${left2}+${top2}"
 	mogrify -path "$OUTDIR" -crop ${w2}x${h2}+${left2}+${top2} -resize 256x256^ $INDIR/$subdir/*.png &
 	while RUNNING=$(jobs -r | wc -l) && test "$RUNNING" -ge $CPUS

@@ -67,7 +67,7 @@ face_recognition --tolerance=0.4 --show-distance=1 "$KNOWN" "$TMPDIR2" | sort > 
 
 while IFS=, read f tag distance
 do
-	if test $tag != "$NAME"; then
+	if test "$tag" != "$NAME"; then
 		continue
 	fi
 	IFS=. read subdir w h left top ext <<<"$f"
