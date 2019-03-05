@@ -20,7 +20,15 @@ help:
 
 ## Install Toolchains
 
-install: setup-condaenv
+install: setup-ffmpeg-cmake setup-condaenv
+
+setup-ffmpeg-cmake:
+	@if ! which ffmpeg 2>/dev/null >&2; then \
+		sudo apt install ffmpeg; \ 
+	fi 
+	@if ! which cmake 2>/dev/null >&2; then \
+		sudo apt install cmake; \
+	fi
 
 setup-condaenv: stamps/condainst stamps/condaenv
 
@@ -55,8 +63,8 @@ $(ANACONDAINST):
 .PHONY: data
 
 data:
-	make extract AB=A NAME=taeho
-	make extract AB=B NAME=jaein
+	make extract AB=A NAME=jaein
+	make extract AB=B NAME=muhyeon
 
 extract: setup-condaenv stamps/extract-$(NAME)
 
