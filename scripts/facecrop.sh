@@ -22,7 +22,7 @@ do
 	let 'h2 = h * 2'
 	let 'top2 = top - (h*2/5)'
 	let 'left2 = left - (w/2)'
-	echo "Cropping $INDIR/$subdir: ${w}x${h}+${left}+${top} ${w2}x${h2}+${left2}+${top2}"
+	echo "Cropping dir $INDIR/$subdir : origin ${w}x${h}+${left}+${top} -> extend ${w2}x${h2}+${left2}+${top2}"
 	mogrify -path "$OUTDIR" -crop ${w2}x${h2}+${left2}+${top2} -resize 256x256^ $INDIR/$subdir/*.png &
 	while RUNNING=$(jobs -r | wc -l) && test "$RUNNING" -ge $CPUS
 	do
