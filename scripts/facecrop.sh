@@ -9,11 +9,31 @@ if test -z "$INDIR" -o -z "$PLAN"; then
 	exit 1
 fi
 
-rm -rf "$OUTDIR"
-mkdir -p "$OUTDIR"
+echo "Face cropping begin ..."
+echo "We use cropping plan file: $PLAN"
+
+read INPUTFILESHASH DUMMY <<<$(while read subdir w h left top
+do
+	ls $INDIR/$subdir/* | xargs stat -L -c "%n %s"
+done < "$PLAN" | md5sum -)
+echo "Input files size hash: $INPUTFILESHASH"
+PREEXISTEDHASH=$(cat $OUTDIR/hash.txt 2>/dev/null)
+
+if test "$INPUTFILESHASH" = "$PREEXISTEDHASH"; then
+	echo "Output has hash value: $PREEXISTEDHASH: $OUTDIR/hash.txt"
+	echo "Skip face cropping."
+	exit 0
+else
+	echo "Delete output dir: $OUTDIR"
+	rm -rf "$OUTDIR"
+	mkdir -p "$OUTDIR"
+fi
+exit
 
 CPUS=$(cat /proc/cpuinfo 2>/dev/null | grep processor | wc -l)
 CPUS=${CPUS:-4}
+
+echo "I found $CPUS cpus, mogrify will be launched at most $CPUS instances"
 
 trap 'killall mogrify; exit' SIGINT
 while read subdir w h left top
@@ -31,3 +51,4 @@ do
 done < "$PLAN"
 
 wait
+echo $INPUTFILESHASH > $OUTDIR/hash.txt
