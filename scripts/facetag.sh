@@ -26,6 +26,7 @@ if which face_detection; then
 	:
 else
 	echo "You need face_detection, install it via pip"
+	echo "Or you haven't run '. conda-horock' maybe?"
 	exit 1
 fi
 
