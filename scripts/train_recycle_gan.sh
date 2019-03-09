@@ -9,9 +9,9 @@ NAMES=$1-$2
 GPU_ID=$3
 
 PROJECT_LOC=Recycle-GAN
-DATA_LOC=../datasets/$NAMES
+DATA_LOC=${DATA_LOC:-../datasets}
 
 #source activate recycle-gan
 cd $PROJECT_LOC
-python train.py --dataroot $DATA_LOC/ --name $NAMES --model recycle_gan  --which_model_netG resnet_6blocks --which_model_netP unet_256 --dataset_mode unaligned_triplet --no_dropout --gpu_ids $GPU_ID --identity 0  --pool_size 0 
+python train.py --dataroot $DATA_LOC/$NAMES --name $NAMES --model recycle_gan  --which_model_netG resnet_6blocks --which_model_netP unet_256 --dataset_mode unaligned_triplet --no_dropout --gpu_ids $GPU_ID --identity 0  --pool_size 0 
 

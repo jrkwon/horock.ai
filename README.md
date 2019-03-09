@@ -22,6 +22,11 @@ Stopped the trainings around the 16th epoch.
 ## Video preparation 
 Find a pair of videos and save as the `.mp4` format to the `workspace` folder.
 
+Image Source
+jaein.mp4:   https://youtu.be/ct6vel28_yk
+muhyeon.mp4: https://youtu.be/4zg1oLQ3gOI
+
+
 ## Folder structure
 
 - workspace: The location where a pair of video files reside.

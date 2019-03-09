@@ -6,7 +6,7 @@ DST_DATA_LOC=$2
 FILE1=
 FILE2=
 FILE3=
-COUNT=0
+COUNT=${COUNT:-0}
 mkdir -p $DST_DATA_LOC 2>/dev/null
 find $SRC_DATA_LOC/ -name '*.png' | sort | while read file
 do

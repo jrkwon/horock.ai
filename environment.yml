@@ -4,11 +4,14 @@ channels: !!python/tuple
 - defaults
 dependencies:
 - bzip2=1.0.6=3
+- freetype=2.8
+- ffmpeg=4.0
 - menpo::opencv3=3.1.0=py35_0
 - jpeg=9b=0
-- libpng=1.6.27=0
+- libpng=1.6.32
 - menpo::boost=1.59.0=py35_0
 - menpo::dlib=19.4=py35_0
+- cmake=3.6.3=0
 - conda-forge::tbb
 - mkl=2017.0.3=0
 - numpy=1.13.0=py35_0
@@ -21,7 +24,7 @@ dependencies:
 - tk=8.5.18=0
 - wheel=0.29.0=py35_0
 - xz=5.2.2=1
-- zlib=1.2.8=3
+- zlib=1.2.11=0
 - pip:
   - absl-py==0.7.0
   - asn1crypto==0.24.0

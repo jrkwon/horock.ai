@@ -19,15 +19,7 @@ help:
 
 ## Install Toolchains
 
-install: setup-ffmpeg-cmake setup-condaenv
-
-setup-ffmpeg-cmake:
-	@if ! which ffmpeg 2>/dev/null >&2; then \
-		sudo apt install ffmpeg; \ 
-	fi 
-	@if ! which cmake 2>/dev/null >&2; then \
-		sudo apt install cmake; \
-	fi
+install: setup-condaenv
 
 setup-condaenv: stamps/condainst stamps/condaenv
 
@@ -64,7 +56,10 @@ $(ANACONDAINST):
 data:
 	make extract NAME=jaein
 	make extract NAME=muhyeon
+	make recycle-gan-data A=jaein B=muhyeon
+	#make recycle-gan-data B=jaein A=muhyeon
 
+## SINGLE faces
 extract: stamps/arrange-$(NAME)
 
 stamps/arrange-$(NAME): stamps/extract-$(NAME) ./scripts/arrange_training_set.sh
@@ -93,14 +88,35 @@ stamps/genimages-$(NAME): $(DATA_LOC)/$(NAME).mp4
 $(DATA_LOC)/$(NAME).mp4:
 	@if test ! -f $(DATA_LOC)/$(NAME).mp4; then echo "\nYou need $(DATA_LOC)/$(NAME).mp4\n"; exit 1; fi
 
+## RECYCLE datasets
+recycle-gan-data: stamps/recycle-gan-data-$(A)-$(B)
+
+stamps/recycle-gan-data-$(A)-$(B): stamps/arrange-$(A) stamps/arrange-$(B)
+	bash ./scripts/recycle-gan-data.sh $(A) $(B) $(DATA_LOC)
+	touch $@
+
+## Training
+
+.PHONY: train recycle-gan test
+
+train:
+	make recycle-gan A=muhyeon B=jaein
+	#make recycle-gan B=muhyeon A=jaein
+
+recycle-gan: stamps/recycle-gan-data-$(A)-$(B)
+	bash scripts/train_recycle_gan.sh $(A) $(B) 1,2
+
+
 ## Cleaning
 
 clean:
 	rm -rf stamps/*
 
 clean-all: clean
-	rm -rf faceswap face2face
+	find $(DATA_LOC) -maxdepth 1 -type -d -a -name '*-*' -a ! -name '*-known-*' -print0 | xargs -0 rm -rf
 
 clean-data:
-	rm -f stamps/splitscenes-* stamps/genimages-*
-	rm -rf datasets/*-scenes
+	rm -f stamps/splitscenes-* stamps/genimages-* stamps/scenes-* stamps/extract-* stamps/arrange-*
+
+clean-train:
+	rm -f stamps/recycle-gan-*
