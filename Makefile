@@ -1,6 +1,5 @@
 .PHONY: all clean clean-all
 .PHONY: git-clone setup-condaenv remove-condaenv setup
-.PHONY: extract-taeri
 .PHONY: step1 step2
 
 ANACONDAURL=https://repo.anaconda.com/archive/Anaconda3-2018.12-Linux-x86_64.sh
@@ -60,15 +59,19 @@ $(ANACONDAINST):
 
 ## Setup Data
 
-.PHONY: data
+.PHONY: data extract
 
 data:
-	make extract AB=A NAME=jaein
-	make extract AB=B NAME=muhyeon
+	make extract NAME=jaein
+	make extract NAME=muhyeon
 
-extract: setup-condaenv stamps/extract-$(NAME)
+extract: stamps/arrange-$(NAME)
 
-stamps/extract-$(NAME): setup-condaenv stamps/facetag-$(NAME)
+stamps/arrange-$(NAME): stamps/extract-$(NAME) ./scripts/arrange_training_set.sh
+	bash ./scripts/arrange_training_set.sh $(NAME) $(DATA_LOC) 1000
+	touch $@
+
+stamps/extract-$(NAME): stamps/facetag-$(NAME)
 	bash ./scripts/facecrop.sh $(DATA_LOC)/$(NAME)-scenes $(DATA_LOC)/$(NAME)-faces stamps/facetag-$(NAME)
 	touch $@
 	
