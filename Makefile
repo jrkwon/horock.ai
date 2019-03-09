@@ -7,6 +7,9 @@ ANACONDAINST=download/anaconda-install.sh
 
 FPS=30
 VISDOM_PORT=8097
+GPU_ID=1,2
+TRAINING_SIZE=9000
+TEST_SIZE=1000
 DATA_LOC=datasets
 
 -include local.mk
@@ -66,7 +69,7 @@ data:
 extract: stamps/arrange-$(NAME)
 
 stamps/arrange-$(NAME): stamps/extract-$(NAME) ./scripts/arrange_training_set.sh
-	bash ./scripts/arrange_training_set.sh $(NAME) $(DATA_LOC) 4000 1000
+	bash ./scripts/arrange_training_set.sh $(NAME) $(DATA_LOC) $(TRAINING_SIZE) $(TEST_SIZE)
 	touch $@
 
 stamps/extract-$(NAME): stamps/facetag-$(NAME)
@@ -107,7 +110,7 @@ train:
 	#make recycle-gan B=muhyeon A=jaein
 
 recycle-gan: stamps/recycle-gan-data-$(A)-$(B)
-	bash scripts/train_recycle_gan.sh $(A) $(B) 1,2
+	bash scripts/train_recycle_gan.sh $(A) $(B) $(GPU_ID)
 
 mon:
 	@python -m visdom.server -port $(VISDOM_PORT) & echo $$! > .visdom.pid
