@@ -63,7 +63,7 @@ data:
 extract: stamps/arrange-$(NAME)
 
 stamps/arrange-$(NAME): stamps/extract-$(NAME) ./scripts/arrange_training_set.sh
-	bash ./scripts/arrange_training_set.sh $(NAME) $(DATA_LOC) 1000
+	bash ./scripts/arrange_training_set.sh $(NAME) $(DATA_LOC) 9000 1000
 	touch $@
 
 stamps/extract-$(NAME): stamps/facetag-$(NAME)
