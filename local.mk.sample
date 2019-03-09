@@ -1,0 +1,4 @@
+# This is local configuration for avoiding co-working conflict
+# Copy this file to local.mk and edit
+
+VISDOM_PORT=8096

@@ -6,7 +6,10 @@ ANACONDAURL=https://repo.anaconda.com/archive/Anaconda3-2018.12-Linux-x86_64.sh
 ANACONDAINST=download/anaconda-install.sh
 
 FPS=30
+VISDOM_PORT=8097
 DATA_LOC=datasets
+
+-include local.mk
 
 all: help
 
@@ -63,7 +66,7 @@ data:
 extract: stamps/arrange-$(NAME)
 
 stamps/arrange-$(NAME): stamps/extract-$(NAME) ./scripts/arrange_training_set.sh
-	bash ./scripts/arrange_training_set.sh $(NAME) $(DATA_LOC) 9000 1000
+	bash ./scripts/arrange_training_set.sh $(NAME) $(DATA_LOC) 4000 1000
 	touch $@
 
 stamps/extract-$(NAME): stamps/facetag-$(NAME)
@@ -106,6 +109,13 @@ train:
 recycle-gan: stamps/recycle-gan-data-$(A)-$(B)
 	bash scripts/train_recycle_gan.sh $(A) $(B) 1,2
 
+mon:
+	@python -m visdom.server -port $(VISDOM_PORT) & echo $$! > .visdom.pid
+	@echo "Visdom pid is `cat .visdom.pid`"
+	@echo "You can kill it with 'make kmon'"
+
+kmon:
+	@kill `cat .visdom.pid` 2>/dev/null && echo "Killed visdom.." && rm -f .visdom.pid
 
 ## Cleaning
 
