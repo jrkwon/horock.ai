@@ -28,7 +28,6 @@ else
 	rm -rf "$OUTDIR"
 	mkdir -p "$OUTDIR"
 fi
-exit
 
 CPUS=$(cat /proc/cpuinfo 2>/dev/null | grep processor | wc -l)
 CPUS=${CPUS:-4}
