@@ -7,7 +7,7 @@ ANACONDAINST=download/anaconda-install.sh
 
 FPS=30
 VISDOM_PORT=8097
-GPU_ID=1,2
+GPU_ID=0
 TRAINING_SIZE=9000
 TEST_SIZE=1000
 DATA_LOC=datasets
@@ -110,7 +110,7 @@ train:
 	#make recycle-gan B=muhyeon A=jaein
 
 recycle-gan: stamps/recycle-gan-data-$(A)-$(B)
-	bash scripts/train_recycle_gan.sh $(A) $(B) $(GPU_ID)
+	bash scripts/train_recycle_gan.sh $(A) $(B) $(GPU_ID) $(VISDOM_PORT)
 
 mon:
 	@python -m visdom.server -port $(VISDOM_PORT) & echo $$! > .visdom.pid
