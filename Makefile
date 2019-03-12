@@ -113,9 +113,10 @@ train:
 	make recycle-gan 
 	#make recycle-gan 
 
-recycle-gan: stamps/recycle-gan-data-$(A)-$(B)
+recycle-gan: stamps/recycle-gan-train-$(A)-$(B)
+stamps/recycle-gan-train-$(A)-$(B):
 	bash scripts/train_recycle_gan.sh $(A) $(B) $(GPU_ID) $(VISDOM_PORT)
-
+	touch $@
 mon:
 	@python -m visdom.server -port $(VISDOM_PORT) & echo $$! > .visdom.pid
 	@echo "Visdom pid is `cat .visdom.pid`"
@@ -130,17 +131,19 @@ test:
 	make recycle-gan-test 
 	#make recycle-gan
 
-recycle-gan-test: stamps/recycle-gan-data-$(A)-$(B)
-stamps/recycle-gan-test:
+recycle-gan-test: stamps/recycle-gan-test-$(A)-$(B)
+stamps/recycle-gan-test-$(A)-$(B):
 	bash scripts/test_recycle_gan.sh $(A) $(B) $(TEST_SIZE) $(GPU_ID) $(EPOCH) 
 	touch $@
 
 video:	
 	make make-video
 
-make-video: stamps/recycle-gan-test
+make-video: stamps/make-video-$(A)-$(B) stamps/recycle-gan-test-$(A)-$(B)
+stamps/make-video-$(A)-$(B):
 	bash scripts/make_video.sh AB $(A) $(B) $(EPOCH) 5
 	bash scripts/make_video.sh BA $(A) $(B) $(EPOCH) 5
+	touch $@
 
 ## Cleaning
 
@@ -154,4 +157,10 @@ clean-data:
 	rm -f stamps/splitscenes-* stamps/genimages-* stamps/scenes-* stamps/extract-* stamps/arrange-*
 
 clean-train:
-	rm -f stamps/recycle-gan-*
+	rm -f stamps/recycle-gan-train-*
+
+clean-test:
+	rm -f stamps/recycle-gan-test-*
+
+clean-video:
+	rm -f stamps/make-video-*
