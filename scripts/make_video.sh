@@ -19,11 +19,12 @@ elif [ $DIRECTION = "BA" ]; then
     DST=A
 fi
 PROJECT_LOC=Recycle-GAN
+DATA_LOC=datasets
 REAL_DATA=$PROJECT_LOC/results/$NAMES/test_latest/images/%05d_real_$SRC.png
-REAL_OUTPUT=$PROJECT_LOC/results/$NAMES/real_$SRC.mp4
+REAL_OUTPUT=$DATA_LOC/$NAMES/real_$SRC.mp4
 FAKE_DATA=$PROJECT_LOC/results/$NAMES/test_latest/images/%05d_fake_$DST.png
-FAKE_OUTPUT=$PROJECT_LOC/results/$NAMES/fake_$DST.mp4
-REAL_FAKE_OUTPUT=$PROJECT_LOC/results/$NAMES/real_${SRC}_fake_$DST.mp4
+FAKE_OUTPUT=$DATA_LOC/$NAMES/fake_$DST.mp4
+REAL_FAKE_OUTPUT=$DATA_LOC/$NAMES/real_${SRC}_fake_$DST.mp4
 
 echo Making $REAL_OUTPUT ...
 ffmpeg -i $REAL_DATA -framerate $FRAME_RATE $REAL_OUTPUT
