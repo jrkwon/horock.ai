@@ -5,12 +5,15 @@
 ANACONDAURL=https://repo.anaconda.com/archive/Anaconda3-2018.12-Linux-x86_64.sh
 ANACONDAINST=download/anaconda-install.sh
 
+A=muhyeon
+B=jaein
 FPS=30
 VISDOM_PORT=8097
 GPU_ID=0
 TRAINING_SIZE=9000
 TEST_SIZE=1000
 DATA_LOC=datasets
+EPOCH=latest
 
 -include local.mk
 
@@ -60,10 +63,10 @@ $(ANACONDAINST):
 .PHONY: data extract
 
 data:
-	make extract NAME=jaein
-	make extract NAME=muhyeon
-	make recycle-gan-data A=jaein B=muhyeon
-	#make recycle-gan-data B=jaein A=muhyeon
+	make extract NAME=$(A)
+	make extract NAME=$(B)
+	make recycle-gan-data 
+	#make recycle-gan-data
 
 ## SINGLE faces
 extract: stamps/arrange-$(NAME)
@@ -106,8 +109,8 @@ stamps/recycle-gan-data-$(A)-$(B): stamps/arrange-$(A) stamps/arrange-$(B)
 .PHONY: train recycle-gan test
 
 train:
-	make recycle-gan A=muhyeon B=jaein
-	#make recycle-gan B=muhyeon A=jaein
+	make recycle-gan 
+	#make recycle-gan 
 
 recycle-gan: stamps/recycle-gan-data-$(A)-$(B)
 	bash scripts/train_recycle_gan.sh $(A) $(B) $(GPU_ID) $(VISDOM_PORT)
@@ -119,6 +122,24 @@ mon:
 
 kmon:
 	@kill `cat .visdom.pid` 2>/dev/null && echo "Killed visdom.." && rm -f .visdom.pid
+
+## Testing
+
+test:
+	make recycle-gan-test 
+	#make recycle-gan
+
+recycle-gan-test: stamps/recycle-gan-data-$(A)-$(B)
+stamps/recycle-gan-test:
+	bash scripts/test_recycle_gan.sh $(A) $(B) $(TEST_SIZE) $(GPU_ID) $(EPOCH) 
+	touch $@
+
+video:	
+	make make-video
+
+make-video: stamps/recycle-gan-test
+	bash scripts/make_video.sh AB $(A) $(B) $(EPOCH) 5
+	bash scripts/make_video.sh BA $(A) $(B) $(EPOCH) 5
 
 ## Cleaning
 

@@ -1,13 +1,14 @@
 #!/bin/bash
 
-if test "$#" -ne 4; then
-    echo "Use AB|BA nameA nameB frame_rate"
+if test "$#" -ne 5; then
+    echo "Use AB|BA nameA nameB epoch frame_rate"
     exit 1
 fi
 
 DIRECTION=$1
 NAMES=$2-$3
-FRAME_RATE=$4
+EPOCH=$4
+FRAME_RATE=$5
 
 SRC=A
 DST=B
@@ -18,13 +19,17 @@ elif [ $DIRECTION = "BA" ]; then
     SRC=B
     DST=A
 fi
+
+
 PROJECT_LOC=Recycle-GAN
 DATA_LOC=datasets
-REAL_DATA=$PROJECT_LOC/results/$NAMES/test_latest/images/%05d_real_$SRC.png
-REAL_OUTPUT=$DATA_LOC/$NAMES/real_$SRC.mp4
-FAKE_DATA=$PROJECT_LOC/results/$NAMES/test_latest/images/%05d_fake_$DST.png
-FAKE_OUTPUT=$DATA_LOC/$NAMES/fake_$DST.mp4
-REAL_FAKE_OUTPUT=$DATA_LOC/$NAMES/real_${SRC}_fake_$DST.mp4
+OUTPUT_LOC=$DATA_LOC/$NAMES/epoch-$EPOCH
+mkdir -p $OUTPUT_LOC
+REAL_DATA=$PROJECT_LOC/results/$NAMES/test_$EPOCH/images/%05d_real_$SRC.png
+REAL_OUTPUT=$OUTPUT_LOC/real_$SRC.mp4
+FAKE_DATA=$PROJECT_LOC/results/$NAMES/test_$EPOCH/images/%05d_fake_$DST.png
+FAKE_OUTPUT=$OUTPUT_LOC/fake_$DST.mp4
+REAL_FAKE_OUTPUT=$OUTPUT_LOC/real_${SRC}_fake_$DST.mp4
 
 echo Making $REAL_OUTPUT ...
 ffmpeg -i $REAL_DATA -framerate $FRAME_RATE $REAL_OUTPUT
