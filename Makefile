@@ -25,6 +25,7 @@ help:
 	@echo "    make data       : extract data for training"
 	@echo "    make train      : train data"
 	@echo "    make test       : evaluate model"
+	@echo "    make video      : make videos from test"
 
 ## Install Toolchains
 
