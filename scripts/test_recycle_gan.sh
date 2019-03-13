@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if test "$#" -ne 5; then
-    echo "Use nameA nameB num_test_images gpu_id epoch"
+    echo "Use nameA nameB num_test_images gpu_id which_epoch"
     exit 1
 fi
 
