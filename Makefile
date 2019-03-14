@@ -23,7 +23,7 @@ help:
 	@echo "Usage:"
 	@echo "    make install    : install anaconda"
 	@echo "    make data       : extract data for training"
-	@echo "    make mon/kmon   : run visdom / kill visdom (you can change port with local.mk)
+	@echo "    make mon/kmon   : run visdom / kill visdom (you can change port with local.mk)"
 	@echo "    make train      : train data"
 	@echo "    make test       : evaluate model"
 	@echo "    make video      : make videos from test"
