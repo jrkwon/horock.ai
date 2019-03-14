@@ -3,6 +3,7 @@
 NAME="$1"
 DATA_LOC="$2"
 PLAN="$3"
+FACEDETECT_MODEL=${FACEDETECT_MODEL:-cnn}
 
 if test -z "$NAME" -o -z "$DATA_LOC"; then
 	echo "Usage: $0 <name> <datasets-dir> <out-file>"
@@ -41,8 +42,8 @@ do
 	cp -f $FIRSTIMG "$TMPDIR1/$d.png"
 done
 
-echo "Face detecting... $TMPDIR2/detect.log"
-face_detection --model=cnn "$TMPDIR1" > $TMPDIR2/detect.log || exit
+echo "Face detecting... $TMPDIR2/detect.log (with model: $FACEDETECT_MODEL)"
+face_detection --model="${FACEDETECT_MODEL}" "$TMPDIR1" > $TMPDIR2/detect.log || exit 1
 
 while IFS=, read f top right bottom left
 do
@@ -64,7 +65,7 @@ do
 done < $TMPDIR2/detect.log
 
 echo "Face recognizing... $TMPDIR2/recog.log"
-face_recognition --tolerance=0.4 --show-distance=1 "$KNOWN" "$TMPDIR2" | sort > $TMPDIR2/recog.log || exit
+face_recognition --tolerance=0.4 --show-distance=1 "$KNOWN" "$TMPDIR2" | sort > $TMPDIR2/recog.log || exit 1
 
 while IFS=, read f tag distance
 do
