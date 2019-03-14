@@ -17,7 +17,7 @@ SRCDIRS=( "$DATA_LOC/$A-faces-triplets" "$DATA_LOC/$B-faces-triplets" "$DATA_LOC
 for dir in "${DSTDIRS[@]}"
 do
 	echo rm -rf $dir
-	mkdir -p $dir
+	mkdir -p $dir || exit 1
 done
 
 IDX=0
@@ -27,8 +27,8 @@ do
 	find ${SRCDIRS[$IDX]} -name '*.png' | xargs -n 100 echo | 
 		while read files
 		do
-			ln -f $files ${DSTDIRS[$IDX]}/
-		done
+			ln -f $files ${DSTDIRS[$IDX]}/ || exit 1
+		done || exit 1
 	let 'IDX++'
 done
 
