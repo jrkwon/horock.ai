@@ -42,7 +42,7 @@ do
 done
 
 echo "Face detecting... $TMPDIR2/detect.log"
-face_detection --model=cnn "$TMPDIR1" > $TMPDIR2/detect.log
+face_detection --model=cnn "$TMPDIR1" > $TMPDIR2/detect.log || exit
 
 while IFS=, read f top right bottom left
 do
@@ -64,7 +64,7 @@ do
 done < $TMPDIR2/detect.log
 
 echo "Face recognizing... $TMPDIR2/recog.log"
-face_recognition --tolerance=0.4 --show-distance=1 "$KNOWN" "$TMPDIR2" | sort > $TMPDIR2/recog.log
+face_recognition --tolerance=0.4 --show-distance=1 "$KNOWN" "$TMPDIR2" | sort > $TMPDIR2/recog.log || exit
 
 while IFS=, read f tag distance
 do
