@@ -27,6 +27,8 @@ help:
 	@echo "    make train      : train data"
 	@echo "    make test       : evaluate model"
 	@echo "    make video      : make videos from test"
+	@echo ""
+	@echo "    make -rnd <target> will show you the dependency chain"
 
 ## Install Toolchains
 
@@ -39,8 +41,7 @@ remove-condaenv:
 	rm -f stamps/conda-env
 
 check-condaenv:
-	@echo ""
-	@if test -z "$${CONDA_DEFAULT_ENV}"; then echo "You need '. conda-horock' to run\n"; exit 1; fi
+	@if test -z "$${CONDA_DEFAULT_ENV}"; then echo "\nYou need '. conda-horock' to run\n"; exit 1; fi
 
 stamps/condaenv: environment.yml
 	conda env create -f environment.yml || conda env update -f environment.yml
@@ -68,23 +69,18 @@ $(ANACONDAINST):
 
 .PHONY: data extract
 
-data: check-condaenv
-	make extract NAME=$(A)
-	make extract NAME=$(B)
-	make recycle-gan-data 
-	#make recycle-gan-data
+data: recycle-gan-data 
 
 ## SINGLE faces
-extract: stamps/arrange-$(NAME)
+extract: stamps/extract-$(NAME) ./scripts/arrange_training_set.sh
+	bash ./scripts/arrange_training_set.sh $(NAME) $(DATA_LOC) $(TRAINING_SIZE) $(TEST_SIZE)
 
 stamps/arrange-$(A):
-	make extract NAME=$(A)
+	$(MAKE) extract NAME=$(A)
+	touch $@
 
 stamps/arrange-$(B):
-	make extract NAME=$(B)
-
-stamps/arrange-$(NAME): stamps/extract-$(NAME) ./scripts/arrange_training_set.sh
-	bash ./scripts/arrange_training_set.sh $(NAME) $(DATA_LOC) $(TRAINING_SIZE) $(TEST_SIZE)
+	$(MAKE) extract NAME=$(B)
 	touch $@
 
 stamps/extract-$(NAME): stamps/facetag-$(NAME)
@@ -112,7 +108,7 @@ $(DATA_LOC)/$(NAME).mp4:
 ## RECYCLE datasets
 recycle-gan-data: stamps/recycle-gan-data-$(A)-$(B)
 
-stamps/recycle-gan-data-$(A)-$(B): stamps/arrange-$(A) stamps/arrange-$(B)
+stamps/recycle-gan-data-$(A)-$(B): check-condaenv stamps/arrange-$(A) stamps/arrange-$(B)
 	bash ./scripts/recycle-gan-data.sh $(A) $(B) $(DATA_LOC)
 	touch $@
 
@@ -121,7 +117,7 @@ stamps/recycle-gan-data-$(A)-$(B): stamps/arrange-$(A) stamps/arrange-$(B)
 .PHONY: train recycle-gan test
 
 train: check-condaenv
-	make recycle-gan 
+	$(MAKE) recycle-gan 
 	#make recycle-gan 
 
 recycle-gan: stamps/recycle-gan-train-$(A)-$(B)
@@ -137,10 +133,11 @@ kmon:
 	@kill `cat .visdom.pid` 2>/dev/null && echo "Killed visdom.." && rm -f .visdom.pid
 
 ## Testing
+.PHONY: test video recycle-gan-test make-video
 
 test: check-condaenv
-	make recycle-gan-test 
-	#make recycle-gan
+	$(MAKE) recycle-gan-test 
+	#$(MAKE) recycle-gan
 
 recycle-gan-test: stamps/recycle-gan-test-$(A)-$(B)
 stamps/recycle-gan-test-$(A)-$(B): stamps/recycle-gan-train-$(A)-$(B)
@@ -148,7 +145,7 @@ stamps/recycle-gan-test-$(A)-$(B): stamps/recycle-gan-train-$(A)-$(B)
 	touch $@
 
 video: check-condaenv
-	make make-video
+	$(MAKE) make-video
 
 make-video: stamps/make-video-$(A)-$(B) stamps/recycle-gan-test-$(A)-$(B)
 stamps/make-video-$(A)-$(B):
@@ -159,19 +156,19 @@ stamps/make-video-$(A)-$(B):
 ## Cleaning
 
 clean:
-	rm -rf stamps/*
+	$(RM) -r stamps/*
 
 clean-all: clean
 	find $(DATA_LOC) -maxdepth 1 -type d -a -name '*-*' -a ! -name '*-known-*' -print0 | xargs -0 rm -rf
 
 clean-data:
-	rm -f stamps/splitscenes-* stamps/genimages-* stamps/scenes-* stamps/extract-* stamps/arrange-*
+	$(RM) stamps/splitscenes-* stamps/genimages-* stamps/scenes-* stamps/extract-* stamps/arrange-*
 
 clean-train:
-	rm -f stamps/recycle-gan-train-*
+	$(RM) stamps/recycle-gan-train-*
 
 clean-test:
-	rm -f stamps/recycle-gan-test-*
+	$(RM) stamps/recycle-gan-test-*
 
 clean-video:
-	rm -f stamps/make-video-*
+	$(RM) stamps/make-video-*
