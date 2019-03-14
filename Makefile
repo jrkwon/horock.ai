@@ -73,6 +73,12 @@ data:
 ## SINGLE faces
 extract: stamps/arrange-$(NAME)
 
+stamps/arrange-$(A):
+	make extract NAME=$(A)
+
+stamps/arrange-$(B):
+	make extract NAME=$(B)
+
 stamps/arrange-$(NAME): stamps/extract-$(NAME) ./scripts/arrange_training_set.sh
 	bash ./scripts/arrange_training_set.sh $(NAME) $(DATA_LOC) $(TRAINING_SIZE) $(TEST_SIZE)
 	touch $@
@@ -115,7 +121,7 @@ train:
 	#make recycle-gan 
 
 recycle-gan: stamps/recycle-gan-train-$(A)-$(B)
-stamps/recycle-gan-train-$(A)-$(B):
+stamps/recycle-gan-train-$(A)-$(B): stamps/recycle-gan-data-$(A)-$(B)
 	bash scripts/train_recycle_gan.sh $(A) $(B) $(GPU_ID) $(VISDOM_PORT)
 	touch $@
 mon:
@@ -133,7 +139,7 @@ test:
 	#make recycle-gan
 
 recycle-gan-test: stamps/recycle-gan-test-$(A)-$(B)
-stamps/recycle-gan-test-$(A)-$(B):
+stamps/recycle-gan-test-$(A)-$(B): stamps/recycle-gan-train-$(A)-$(B)
 	bash scripts/test_recycle_gan.sh $(A) $(B) $(TEST_SIZE) $(GPU_ID) $(EPOCH) 
 	touch $@
 
