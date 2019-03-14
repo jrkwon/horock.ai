@@ -5,10 +5,10 @@ if test "$#" -ne 5; then
     exit 1
 fi
 
-DIRECTION=$1
-NAMES=$2-$3
-EPOCH=$4
-FRAME_RATE=$5
+DIRECTION="$1"
+NAMES="$2-$3"
+EPOCH="$4"
+FRAME_RATE="$5"
 
 SRC=A
 DST=B
