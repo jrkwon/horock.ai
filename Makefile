@@ -1,5 +1,5 @@
 .PHONY: all clean clean-all
-.PHONY: git-clone setup-condaenv remove-condaenv setup
+.PHONY: git-clone setup-condaenv remove-condaenv check-condaenv setup
 .PHONY: step1 step2
 
 ANACONDAURL=https://repo.anaconda.com/archive/Anaconda3-2018.12-Linux-x86_64.sh
@@ -38,6 +38,10 @@ remove-condaenv:
 	conda env remove -n horock
 	rm -f stamps/conda-env
 
+check-condaenv:
+	@echo ""
+	@if test -z "$${CONDA_DEFAULT_ENV}"; then echo "You need '. conda-horock' to run\n"; exit 1; fi
+
 stamps/condaenv: environment.yml
 	conda env create -f environment.yml || conda env update -f environment.yml
 	touch $@
@@ -64,7 +68,7 @@ $(ANACONDAINST):
 
 .PHONY: data extract
 
-data:
+data: check-condaenv
 	make extract NAME=$(A)
 	make extract NAME=$(B)
 	make recycle-gan-data 
@@ -116,7 +120,7 @@ stamps/recycle-gan-data-$(A)-$(B): stamps/arrange-$(A) stamps/arrange-$(B)
 
 .PHONY: train recycle-gan test
 
-train:
+train: check-condaenv
 	make recycle-gan 
 	#make recycle-gan 
 
@@ -134,7 +138,7 @@ kmon:
 
 ## Testing
 
-test:
+test: check-condaenv
 	make recycle-gan-test 
 	#make recycle-gan
 
@@ -143,7 +147,7 @@ stamps/recycle-gan-test-$(A)-$(B): stamps/recycle-gan-train-$(A)-$(B)
 	bash scripts/test_recycle_gan.sh $(A) $(B) $(TEST_SIZE) $(GPU_ID) $(EPOCH) 
 	touch $@
 
-video:	
+video: check-condaenv
 	make make-video
 
 make-video: stamps/make-video-$(A)-$(B) stamps/recycle-gan-test-$(A)-$(B)
