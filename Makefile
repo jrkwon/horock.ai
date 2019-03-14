@@ -152,7 +152,7 @@ clean:
 	rm -rf stamps/*
 
 clean-all: clean
-	find $(DATA_LOC) -maxdepth 1 -type -d -a -name '*-*' -a ! -name '*-known-*' -print0 | xargs -0 rm -rf
+	find $(DATA_LOC) -maxdepth 1 -type d -a -name '*-*' -a ! -name '*-known-*' -print0 | xargs -0 rm -rf
 
 clean-data:
 	rm -f stamps/splitscenes-* stamps/genimages-* stamps/scenes-* stamps/extract-* stamps/arrange-*
