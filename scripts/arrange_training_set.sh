@@ -18,7 +18,7 @@ CPUS=$(cat /proc/cpuinfo 2>/dev/null | grep processor | wc -l)
 CPUS=${CPUS:-4}
 
 echo "I found $CPUS cpus, making triplet image process will be launched at most $CPUS instances"
-trap 'killall convert; exit' SIGINT
+trap 'killall convert; exit 1' SIGINT
 
 SRC_DATA_LOC=$DATA_LOC/$NAME-faces
 TRAIN_DATA_LOC=$DATA_LOC/$NAME-faces-triplets
@@ -39,8 +39,8 @@ do
 	let 'COUNT++'
 	outfile=$(printf %05d $COUNT)
 	echo -e -n Linking $file to "$TEST_DATA_LOC/$outfile.png\r"
-	ln -f $file "$TEST_DATA_LOC/$outfile.png"
-done
+	ln -f $file "$TEST_DATA_LOC/$outfile.png" || exit
+done || exit
 echo -e "\nNow making triplets images: $TRAININGCOUNT"
 head -n $TRAININGCOUNT $SRC_DATA_LOC.txt | while read file
 do
