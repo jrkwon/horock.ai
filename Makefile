@@ -72,18 +72,18 @@ $(ANACONDAINST):
 data: recycle-gan-data 
 
 ## SINGLE faces
-extract: stamps/extract-$(NAME) ./scripts/arrange_training_set.sh
+extract: stamps/facecrop-$(NAME) ./scripts/arrange_training_set.sh
 	bash ./scripts/arrange_training_set.sh $(NAME) $(DATA_LOC) $(TRAINING_SIZE) $(TEST_SIZE)
 
-stamps/arrange-$(A):
+stamps/extract-$(A):
 	$(MAKE) extract NAME=$(A)
 	touch $@
 
-stamps/arrange-$(B):
+stamps/extract-$(B):
 	$(MAKE) extract NAME=$(B)
 	touch $@
 
-stamps/extract-$(NAME): stamps/facetag-$(NAME)
+stamps/facecrop-$(NAME): stamps/facetag-$(NAME)
 	bash ./scripts/facecrop.sh $(DATA_LOC)/$(NAME)-scenes $(DATA_LOC)/$(NAME)-faces stamps/facetag-$(NAME)
 	touch $@
 	
@@ -108,7 +108,7 @@ $(DATA_LOC)/$(NAME).mp4:
 ## RECYCLE datasets
 recycle-gan-data: stamps/recycle-gan-data-$(A)-$(B)
 
-stamps/recycle-gan-data-$(A)-$(B): check-condaenv stamps/arrange-$(A) stamps/arrange-$(B)
+stamps/recycle-gan-data-$(A)-$(B): check-condaenv stamps/extract-$(A) stamps/extract-$(B)
 	bash ./scripts/recycle-gan-data.sh $(A) $(B) $(DATA_LOC)
 	touch $@
 
@@ -124,7 +124,8 @@ recycle-gan: stamps/recycle-gan-train-$(A)-$(B)
 stamps/recycle-gan-train-$(A)-$(B): stamps/recycle-gan-data-$(A)-$(B)
 	bash scripts/train_recycle_gan.sh $(A) $(B) $(GPU_ID) $(VISDOM_PORT)
 	touch $@
-mon:
+mon: check-condaenv
+	@echo "Use VISDOM_PORT $(VISDOM_PORT)"
 	@python -m visdom.server -port $(VISDOM_PORT) & echo $$! > .visdom.pid
 	@echo "Visdom pid is `cat .visdom.pid`"
 	@echo "You can kill it with 'make kmon'"
@@ -162,7 +163,7 @@ clean-all: clean
 	find $(DATA_LOC) -maxdepth 1 -type d -a -name '*-*' -a ! -name '*-known-*' -print0 | xargs -0 rm -rf
 
 clean-data:
-	$(RM) stamps/splitscenes-* stamps/genimages-* stamps/scenes-* stamps/extract-* stamps/arrange-*
+	$(RM) stamps/splitscenes-* stamps/genimages-* stamps/scenes-* stamps/extract-* stamps/facecrop-* stamps/facetag-*
 
 clean-train:
 	$(RM) stamps/recycle-gan-train-*
