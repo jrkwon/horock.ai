@@ -41,7 +41,7 @@ remove-condaenv:
 	rm -f stamps/conda-env
 
 check-condaenv:
-	@if test -z "$${CONDA_DEFAULT_ENV}"; then echo "\nYou need '. conda-horock' to run\n"; exit 1; fi
+	@if test "$${CONDA_DEFAULT_ENV}" != "horock"; then echo "\nYou need '. conda-horock' to run\n"; exit 1; fi
 
 stamps/condaenv: environment.yml
 	conda env create -f environment.yml || conda env update -f environment.yml
@@ -99,7 +99,7 @@ stamps/scenes-$(NAME): stamps/genimages-$(NAME)
 
 stamps/genimages-$(NAME): $(DATA_LOC)/$(NAME).mp4
 	mkdir -p $(DATA_LOC)/$(NAME)
-	ffmpeg -hide_banner -i $(DATA_LOC)/$(NAME).mp4 -vf fps=$(FPS) $(DATA_LOC)/$(NAME)/%05d.png
+	ffmpeg -hide_banner -i $(DATA_LOC)/$(NAME).mp4 -vf fps=$(FPS) $(DATA_LOC)/$(NAME)/%06d.png
 	touch $@
 
 $(DATA_LOC)/$(NAME).mp4:
@@ -108,7 +108,7 @@ $(DATA_LOC)/$(NAME).mp4:
 ## RECYCLE datasets
 recycle-gan-data: stamps/recycle-gan-data-$(A)-$(B)
 
-stamps/recycle-gan-data-$(A)-$(B): check-condaenv stamps/extract-$(A) stamps/extract-$(B)
+stamps/recycle-gan-data-$(A)-$(B): stamps/extract-$(A) stamps/extract-$(B)
 	bash ./scripts/recycle-gan-data.sh $(A) $(B) $(DATA_LOC)
 	touch $@
 
