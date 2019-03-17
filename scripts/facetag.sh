@@ -4,6 +4,8 @@ NAME="$1"
 DATA_LOC="$2"
 PLAN="$3"
 FACEDETECT_MODEL=${FACEDETECT_MODEL:-cnn}
+#SAMPLING_INTERVAL=200
+SAMPLING_INTERVAL=10000
 
 if test -z "$NAME" -o -z "$DATA_LOC"; then
 	echo "Usage: $0 <name> <datasets-dir> <out-file>"
@@ -31,19 +33,32 @@ else
 	exit 1
 fi
 
-TMPDIR1="$INDIR-firstimgs"
-TMPDIR2="$INDIR-firstfaces"
+TMPDIR1="$INDIR-samples"
+TMPDIR2="$INDIR-samplefaces"
 rm -rf $TMPDIR1 $TMPDIR2
 mkdir -p $TMPDIR1 $TMPDIR2
 for d in $(cd $INDIR; ls -d [0-9]*)
 do
-	FIRSTIMG="$INDIR/$d/$(ls "$INDIR/$d/" | sort | head -1)"
-	echo Copying $FIRSTIMG to "$TMPDIR1/$d.png"
-	cp -f $FIRSTIMG "$TMPDIR1/$d.png"
+	COUNT=0
+	IMGCOUNT=0
+	ls "$INDIR/$d/" | while read f
+	do
+		if test $((COUNT % SAMPLING_INTERVAL)) -eq 0; then
+			let 'IMGCOUNT++'
+			IMGFILE="$INDIR/$d/$f"
+			echo Copying $IMGFILE to "$TMPDIR1/$d.$f"
+			ln -Lf $IMGFILE "$TMPDIR1/$d.$f"
+			#cp -f $IMGFILE "$TMPDIR1/$d.$f"
+		fi
+		let 'COUNT++'
+	done
 done
 
+#Deprecated
+rm -rf "$INDIR-firstimgs" "$INDIR-firstfaces"
+
 echo "Face detecting... $TMPDIR2/detect.log (with model: $FACEDETECT_MODEL)"
-face_detection --model="${FACEDETECT_MODEL}" "$TMPDIR1" > $TMPDIR2/detect.log || exit 1
+face_detection --model="${FACEDETECT_MODEL}" "$TMPDIR1" | sort > $TMPDIR2/detect.log || exit 1
 
 while IFS=, read f top right bottom left
 do
@@ -72,13 +87,14 @@ do
 	if test "$tag" != "$NAME"; then
 		continue
 	fi
-	IFS=. read subdir w h left top ext <<<"$f"
+	IFS=. read subdir idx w h left top ext <<<"$f"
 	subdir=${subdir##*/}
-	echo $subdir $w $h $left $top
-	echo "SUBDIR $subdir: $w*$h $left $top" >&2
+	echo $subdir $idx $w $h $left $top
+	echo "SUBDIR $subdir $idx: $w*$h $left $top" >&2
 done < $TMPDIR2/recog.log | sort > $INDIR/plan.log
 
 cp $INDIR/plan.log "$PLAN"
 
 echo "Cropping plan produced... $INDIR/plan.log"
 echo "The plan copied to $PLAN"
+

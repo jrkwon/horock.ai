@@ -20,7 +20,7 @@ do
 		echo $ENDFRAME
 	done <<< "$LINE"
 done < "$PROBES" > "$PROBES.1"
-( cd $INDIR; ls [0-9]*.png ) | sort | tail -1 | tr -cd '0-9' >> "$PROBES.1"
+find "$INDIR" -name '[0-9]*.png' -print | awk -F/ '{print $NF}' | sort | tail -1 | tr -cd '0-9' >> "$PROBES.1"
 
 DIRCOUNT=1
 COUNT=1

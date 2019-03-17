@@ -12,7 +12,7 @@ fi
 echo "Face cropping begin ..."
 echo "We use cropping plan file: $PLAN"
 
-read INPUTFILESHASH DUMMY <<<$(while read subdir w h left top
+read INPUTFILESHASH DUMMY <<<$(while read subdir idx w h left top
 do
 	ls $INDIR/$subdir/* | xargs stat -L -c "%n %s"
 done < "$PLAN" | md5sum -)
@@ -35,13 +35,13 @@ CPUS=${CPUS:-4}
 echo "I found $CPUS cpus, mogrify will be launched at most $CPUS instances"
 
 trap 'killall mogrify; exit' SIGINT
-while read subdir w h left top
+while read subdir idx w h left top
 do
 	let 'w2 = w * 2'
 	let 'h2 = h * 2'
 	let 'top2 = top - (h*2/5)'
 	let 'left2 = left - (w/2)'
-	echo "Cropping dir $INDIR/$subdir : origin ${w}x${h}+${left}+${top} -> extend ${w2}x${h2}+${left2}+${top2}"
+	echo "Cropping dir $INDIR/$subdir $idx: origin ${w}x${h}+${left}+${top} -> extend ${w2}x${h2}+${left2}+${top2}"
 	mogrify -path "$OUTDIR" -crop ${w2}x${h2}+${left2}+${top2} -resize 256x256^ $INDIR/$subdir/*.png &
 	while RUNNING=$(jobs -r | wc -l) && test "$RUNNING" -ge $CPUS
 	do
