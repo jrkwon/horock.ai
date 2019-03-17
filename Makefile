@@ -2,6 +2,11 @@
 .PHONY: git-clone setup-condaenv remove-condaenv check-condaenv setup
 .PHONY: step1 step2
 
+## We set ".SECONDEXPANSION:" for expanding '$$*' in prerequsite condition to reuse '%' part string of target.
+## Expanding '$*' in recipes is always working w/ w/o .SECONDEXPANSION
+## Check with make -rnd <target> for clarity
+.SECONDEXPANSION:
+
 ANACONDAURL=https://repo.anaconda.com/archive/Anaconda3-2018.12-Linux-x86_64.sh
 ANACONDAINST=download/anaconda-install.sh
 
@@ -72,26 +77,20 @@ $(ANACONDAINST):
 data: recycle-gan-data 
 
 ## SINGLE faces
-extract: stamps/facecrop-$(NAME) ./scripts/arrange_training_set.sh
-	bash ./scripts/arrange_training_set.sh $(NAME) $(DATA_LOC) $(TRAINING_SIZE) $(TEST_SIZE)
 
-stamps/extract-$(A):
-	$(MAKE) extract NAME=$(A)
+stamps/extract-%: stamps/facecrop-$$* ./scripts/arrange_training_set.sh
+	bash ./scripts/arrange_training_set.sh $* $(DATA_LOC) $(TRAINING_SIZE) $(TEST_SIZE)
 	touch $@
 
-stamps/extract-$(B):
-	$(MAKE) extract NAME=$(B)
-	touch $@
-
-stamps/facecrop-$(NAME): stamps/facetag-$(NAME)
-	bash ./scripts/facecrop.sh $(DATA_LOC)/$(NAME)-scenes $(DATA_LOC)/$(NAME)-faces stamps/facetag-$(NAME)
+stamps/facecrop-%: stamps/facetag-$$*
+	bash ./scripts/facecrop.sh $(DATA_LOC)/$*-scenes $(DATA_LOC)/$*-faces stamps/facetag-$*
 	touch $@
 	
-stamps/facetag-$(NAME): stamps/splitscenes-$(NAME) scripts/facetag.sh
-	bash ./scripts/facetag.sh $(NAME) $(DATA_LOC) $@
+stamps/facetag-%: stamps/splitscenes-$$* scripts/facetag.sh
+	bash ./scripts/facetag.sh $* $(DATA_LOC) $@
 
-stamps/splitscenes-$(NAME): stamps/scenes-$(NAME)
-	bash ./scripts/splitscenes.sh $(DATA_LOC)/$(NAME) $(DATA_LOC)/$(NAME)-scenes stamps/scenes-$(NAME)
+stamps/splitscenes-%: stamps/scenes-$$*
+	bash ./scripts/splitscenes.sh $(DATA_LOC)/$* $(DATA_LOC)/$*-scenes stamps/scenes-$*
 	touch $@
 
 stamps/scenes-%: stamps/genimages-$$*
@@ -102,8 +101,8 @@ stamps/genimages-%: $(DATA_LOC)/$$*.mp4
 	ffmpeg -hide_banner -i $(DATA_LOC)/$*.mp4 -vf fps=$(FPS) $(DATA_LOC)/$*/%06d.png
 	touch $@
 
-$(DATA_LOC)/$(NAME).mp4:
-	@if test ! -f $(DATA_LOC)/$(NAME).mp4; then echo "\nYou need $(DATA_LOC)/$(NAME).mp4\n"; exit 1; fi
+$(DATA_LOC)/%.mp4:
+	@if test ! -f $(DATA_LOC)/$*.mp4; then echo "\nYou need $(DATA_LOC)/$*.mp4\n"; exit 1; fi
 
 ## RECYCLE datasets
 recycle-gan-data: stamps/recycle-gan-data-$(A)-$(B)
