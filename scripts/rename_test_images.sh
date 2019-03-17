@@ -19,4 +19,4 @@ NAMES=$NAME_A-$NAME_B
 #PROJECT_LOC=../Recycle-GAN
 DATA_LOC=datasets/$NAMES/test$AB
 
-ls $DATA_LOC | cat -n | while read n f; do mv $DATA_LOC/"$f" `printf $DATA_LOC/"%05d.png" $n`; done
+ls $DATA_LOC | cat -n | while read n f; do mv $DATA_LOC/"$f" `printf $DATA_LOC/"%06d.png" $n`; done

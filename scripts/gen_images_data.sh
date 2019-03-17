@@ -10,4 +10,4 @@ DATA_LOC=$PROJECT_LOC/datasets/data$AB/$NAME
 
 cp ../workspace/$NAME.mp4 $DATA_LOC.mp4
 mkdir -p  $DATA_LOC/data$AB/$NAME
-ffmpeg -i $DATA_LOC/data$AB/$NAME.mp4 -vf fps=30 $DATA_LOC/data$AB/$NAME/%05d.png
+ffmpeg -i $DATA_LOC/data$AB/$NAME.mp4 -vf fps=30 $DATA_LOC/data$AB/$NAME/%06d.png

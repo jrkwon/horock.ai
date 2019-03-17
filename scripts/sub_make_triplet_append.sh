@@ -14,7 +14,7 @@ do
         FILE2=$FILE3
         FILE3=$file
         if test -n "$FILE1" -a -n "$FILE2" -a -n "$FILE3"; then
-                outfile=$(printf %05d $COUNT)
+                outfile=$(printf %06d $COUNT)
                 echo convert "$FILE1" "$FILE2" "$FILE3" +append $DST_DATA_LOC/$outfile.png
                 convert "$FILE1" "$FILE2" "$FILE3" +append $DST_DATA_LOC/$outfile.png 
 

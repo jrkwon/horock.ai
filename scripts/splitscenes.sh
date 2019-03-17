@@ -32,7 +32,7 @@ do
 	mkdir -p "$OUTDIR/$SUBDIR/"
 	while test $COUNT -le $ENDFRAME
 	do
-		IMGFILE="$(printf "%05d" $COUNT).png"
+		IMGFILE="$(printf "%06d" $COUNT).png"
 		if test -f "$INDIR/$IMGFILE"; then
 			ln -sf "../../$NAME/$IMGFILE" "$OUTDIR/$SUBDIR/"
 		else

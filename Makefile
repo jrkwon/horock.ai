@@ -94,12 +94,12 @@ stamps/splitscenes-$(NAME): stamps/scenes-$(NAME)
 	bash ./scripts/splitscenes.sh $(DATA_LOC)/$(NAME) $(DATA_LOC)/$(NAME)-scenes stamps/scenes-$(NAME)
 	touch $@
 
-stamps/scenes-$(NAME): stamps/genimages-$(NAME)
-	ffprobe -hide_banner -show_frames -of compact=p=0 -f lavfi 'movie=$(DATA_LOC)/$(NAME)/%05d.png,select=gt(scene\,.2)' | tee $@
+stamps/scenes-%: stamps/genimages-$$*
+	ffprobe -hide_banner -show_frames -of compact=p=0 -f lavfi 'movie=$(DATA_LOC)/$*/%06d.png,select=gt(scene\,.2)' | tee $@
 
-stamps/genimages-$(NAME): $(DATA_LOC)/$(NAME).mp4
-	mkdir -p $(DATA_LOC)/$(NAME)
-	ffmpeg -hide_banner -i $(DATA_LOC)/$(NAME).mp4 -vf fps=$(FPS) $(DATA_LOC)/$(NAME)/%06d.png
+stamps/genimages-%: $(DATA_LOC)/$$*.mp4
+	mkdir -p $(DATA_LOC)/$*
+	ffmpeg -hide_banner -i $(DATA_LOC)/$*.mp4 -vf fps=$(FPS) $(DATA_LOC)/$*/%06d.png
 	touch $@
 
 $(DATA_LOC)/$(NAME).mp4:

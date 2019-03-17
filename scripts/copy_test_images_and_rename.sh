@@ -23,4 +23,4 @@ DST_DATA_LOC=datasets/$NAMES/test$AB
 mkdir -p $DST_DATA_LOC
 cp $SRC_DATA_LOC/*.png $DST_DATA_LOC/.
 
-ls $DST_DATA_LOC | cat -n | while read n f; do mv $DST_DATA_LOC/"$f" `printf $DST_DATA_LOC/"%05d.png" $n`; done
+ls $DST_DATA_LOC | cat -n | while read n f; do mv $DST_DATA_LOC/"$f" `printf $DST_DATA_LOC/"%06d.png" $n`; done

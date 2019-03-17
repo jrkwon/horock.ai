@@ -25,9 +25,9 @@ PROJECT_LOC=Recycle-GAN
 DATA_LOC=datasets
 OUTPUT_LOC=$DATA_LOC/$NAMES/epoch-$EPOCH
 mkdir -p $OUTPUT_LOC
-REAL_DATA=$PROJECT_LOC/results/$NAMES/test_$EPOCH/images/%05d_real_$SRC.png
+REAL_DATA=$PROJECT_LOC/results/$NAMES/test_$EPOCH/images/%06d_real_$SRC.png
 REAL_OUTPUT=$OUTPUT_LOC/real_$SRC.mp4
-FAKE_DATA=$PROJECT_LOC/results/$NAMES/test_$EPOCH/images/%05d_fake_$DST.png
+FAKE_DATA=$PROJECT_LOC/results/$NAMES/test_$EPOCH/images/%06d_fake_$DST.png
 FAKE_OUTPUT=$OUTPUT_LOC/fake_$DST.mp4
 REAL_FAKE_OUTPUT=$OUTPUT_LOC/real_${SRC}_fake_$DST.mp4
 

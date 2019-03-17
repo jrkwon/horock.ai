@@ -37,7 +37,7 @@ echo "Now linking test images: $TESTCOUNT"
 tail -n $TESTCOUNT $SRC_DATA_LOC.txt | while read file
 do
 	let 'COUNT++'
-	outfile=$(printf %05d $COUNT)
+	outfile=$(printf %06d $COUNT)
 	echo -e -n Linking $file to "$TEST_DATA_LOC/$outfile.png\r"
 	ln -f $file "$TEST_DATA_LOC/$outfile.png" || exit
 done || exit
