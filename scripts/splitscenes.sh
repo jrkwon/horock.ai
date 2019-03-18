@@ -4,6 +4,8 @@ INDIR="$1"
 OUTDIR="$2"
 PROBES="$3"
 
+. $(dirname $0)/common.sh
+
 if test -z "$INDIR" -o -z "$OUTDIR" -o -z "$PROBES"; then
 	echo "Usage: $0 <png-extracted-dir> <output-dir> <ffprob result>"
 	exit 1
@@ -30,16 +32,22 @@ do
 	SUBDIR=$(printf "%04d" $DIRCOUNT)
 	echo "Scene #$SUBDIR ..."
 	mkdir -p "$OUTDIR/$SUBDIR/"
+	IMGFILES=""
 	while test $COUNT -le $ENDFRAME
 	do
-		IMGFILE="$(printf "%06d" $COUNT).png"
-		if test -f "$INDIR/$IMGFILE"; then
-			ln -sf "../../$NAME/$IMGFILE" "$OUTDIR/$SUBDIR/"
-		else
-			echo "Oops $INDIR/IMGFILE missing."
-		fi
+		IMGFILE="$(zeropad 6 $COUNT).png"
+		IMGFILES="$IMGFILES ../../$NAME/$IMGFILE"
 		let COUNT++
+		if test ${#IMGFILES} -gt 3000; then
+			echo "Linking ${IMGFILES:0:25} --> ${IMGFILES:0-24} to $OUTDIR/$SUBDIR/"
+			ln -sf $IMGFILES "$OUTDIR/$SUBDIR/" &
+			IMGFILES=
+		fi
 	done
+	if test -n "$IMGFILES"; then
+		echo "Linking ${IMGFILES:0:25} --> ${IMGFILES:0-24} to $OUTDIR/$SUBDIR/"
+		ln -sf $IMGFILES "$OUTDIR/$SUBDIR/" &
+	fi
 	let DIRCOUNT++
 done < "$PROBES.1"
 
