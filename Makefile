@@ -7,6 +7,10 @@
 ## Check with make -rnd <target> for clarity
 .SECONDEXPANSION:
 
+## Keep intermediate stamps for fast restarting
+## We need .SECONDARY directive
+.SECONDARY:
+
 ANACONDAURL=https://repo.anaconda.com/archive/Anaconda3-2018.12-Linux-x86_64.sh
 ANACONDAINST=download/anaconda-install.sh
 
@@ -58,6 +62,7 @@ stamps/condaenv: environment.yml
 	@echo ""
 
 stamps/condainst: $(ANACONDAINST)
+	-@mkdir stamps
 	@if which conda; then \
 		echo 'Already conda installed'; \
 	else \
@@ -66,7 +71,8 @@ stamps/condainst: $(ANACONDAINST)
 	touch $@
 
 $(ANACONDAINST):
-	mkdir -p `dirname $(ANACONDAINST)`
+	-@mkdir stamps
+	-@mkdir -p `dirname $(ANACONDAINST)`
 	@if which curl 2>/dev/null >&2; then exit 0; else echo "You need curl, (e.g. ubuntu, sudo apt install curl)" && exit 1; fi
 	curl $(ANACONDAURL) > $@
 
@@ -172,3 +178,4 @@ clean-test:
 
 clean-video:
 	$(RM) stamps/make-video-*
+
