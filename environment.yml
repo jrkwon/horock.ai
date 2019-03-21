@@ -25,6 +25,7 @@ dependencies:
 - wheel=0.29.0=py35_0
 - xz=5.2.2=1
 - zlib=1.2.11=0
+- jupyter=1.0.0=py35_0
 - pip:
   - absl-py==0.7.0
   - asn1crypto==0.24.0
