@@ -16,6 +16,7 @@ do
 		break
 	fi
 done
+
 browse() {
 	STEP=${1:-100}
 	FROM=${2:-0}
@@ -37,3 +38,8 @@ browse() {
 		fi
 	done
 }
+
+if test "${PATH/opt\/bin//}" = "${PATH}"; then
+	echo "Add /opt/bin to PATH"
+	PATH="/opt/bin:${PATH}"
+fi
