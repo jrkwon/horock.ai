@@ -179,3 +179,9 @@ clean-test:
 clean-video:
 	$(RM) stamps/make-video-*
 
+gpuinfo:
+	nvidia-smi -q -d MEMORY,TEMPERATURE
+	nvidia-smi -L
+
+gpuinfo2:
+	nvidia-smi -q -d UTILIZATION,ECC,TEMPERATURE,POWER,CLOCK,COMPUTE,PIDS,PERFORMANCE,SUPPORTED_CLOCKS,PAGE_RETIREMENT,ACCOUNTING,ENCODER_STATS,FBC_STATS
