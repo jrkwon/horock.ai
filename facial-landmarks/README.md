@@ -10,9 +10,9 @@ Download this file and unzip it from `https://github.com/davisking/dlib-models/b
 
 ## How to use
 
-The video file folder is `../datasets`.
+The video file folder is `datasets`.
 ```
-$ python main.py video.mp4
+$ python facial-landmarks/main.py video.mp4
 ```
 
 

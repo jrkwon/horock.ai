@@ -7,11 +7,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument("video_file")
 args = parser.parse_args()
 #print(args.video_file)
-dataset_dir = '../datasets/'
+dataset_dir = 'datasets/'
 
 # video source
 video_file = dataset_dir + args.video_file ## '../datasets/jaein.mp4'
-shape_predictor = './dlib-models/shape_predictor_68_face_landmarks.dat'
+shape_predictor = 'facial-landmarks/dlib-models/shape_predictor_68_face_landmarks.dat'
 img_show_time = 1 ## 25 # ms 
 
 class FacialLandmarks:
