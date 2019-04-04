@@ -4,3 +4,4 @@ test*
 *.log
 datasets
 !datasets/README.md
+dlib-models/*.dat
