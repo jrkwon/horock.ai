@@ -34,7 +34,7 @@ class FacialLandmarks:
     ret, self.landmarks_image = self.cap.read()
     if not ret:
       print('Done.')
-      return
+      return False # no more images from the video
 
     # resize frame
     if self.scaler != 1:
@@ -56,7 +56,7 @@ class FacialLandmarks:
       #print('no faces!')
       # reset roi
       #self.face_roi.clear()
-      return
+      return True
     else:
       face = faces[0]
 
@@ -104,6 +104,7 @@ class FacialLandmarks:
 
     #self.original_image = org
     #self.landmarks_image = img 
+    return True
 
   def visualize(self, img_show_time):
     # visualize
@@ -118,7 +119,8 @@ def main():
   facial_landmarks = FacialLandmarks()
   facial_landmarks.load_video(video_file)
   while True:
-    facial_landmarks.find_landmarks()
+    if facial_landmarks.find_landmarks() == False: # no more images
+      break 
     if facial_landmarks.visualize(img_show_time) == False:
       break
   
