@@ -47,12 +47,14 @@ class FacialLandmarks:
       faces = self.detector(img, 1)
     else:
       roi_img = img[self.face_roi[0]:self.face_roi[1], self.face_roi[2]:self.face_roi[3]]
-      # cv2.imshow('roi', roi_img)
+      cv2.imshow('roi', roi_img)
       faces = self.detector(roi_img)
 
     # no faces
-    #if len(faces) == 0:
-    #  print('no faces!')
+    if len(faces) == 0:
+      #print('no faces!')
+      # reset roi
+      self.face_roi.clear()
 
     # find facial landmarks
     for face in faces:
@@ -90,8 +92,8 @@ class FacialLandmarks:
       """
 
       # compute face roi
-      face_roi = np.array([int(min_coords[1] - face_size / 2), int(max_coords[1] + face_size / 2), int(min_coords[0] - face_size / 2), int(max_coords[0] + face_size / 2)])
-      face_roi = np.clip(face_roi, 0, 10000)
+      face_roi = [int(min_coords[1] - face_size / 2), int(max_coords[1] + face_size / 2), int(min_coords[0] - face_size / 2), int(max_coords[0] + face_size / 2)]
+      #face_roi = np.clip(face_roi, 0, 10000)
 
     #self.original_image = org
     self.landmarks_image = img 
