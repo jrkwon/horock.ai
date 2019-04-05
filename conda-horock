@@ -22,11 +22,16 @@ browse() {
 	FROM=${2:-0}
 	TO=${3:-0}
 	COUNT=0
+	if tty 2>/dev/null >/dev/null; then
+		CMD=${CMD:-ls}
+	else
+		CMD=cat
+	fi
 	if test "$STEP" = "-h"; then
 		echo "browse [<step; 100> [<from index> [<to index>]]]"
 		return
 	fi
-	ls | while read f
+	$CMD | while read f
 	do
 		let 'COUNT++'
 		if test $FROM -gt $COUNT; then continue; fi
