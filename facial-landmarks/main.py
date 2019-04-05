@@ -9,8 +9,14 @@ args = parser.parse_args()
 #print(args.video_file)
 dataset_dir = 'datasets/'
 
-# video source
-video_file = dataset_dir + args.video_file ## '../datasets/jaein.mp4'
+# use a number to identify a camera for a live video streaming
+# default camera is 0
+if '.mp4' in args.video_file:
+  # video source
+  video_file = dataset_dir + args.video_file ## '../datasets/jaein.mp4'
+else:
+  video_file = int(args.video_file)
+
 shape_predictor = 'facial-landmarks/dlib-models/shape_predictor_68_face_landmarks.dat'
 img_show_time = 1 ## 25 # ms 
 
@@ -57,49 +63,61 @@ class FacialLandmarks:
       # reset roi
       #self.face_roi.clear()
       return True
-    else:
-      face = faces[0]
+    #else:
+    #  face = faces[0]
 
     # find facial landmarks
-    # for face in faces: process the 1st face only
+    for face in faces: # process the 1st face only
     # ------>
-    if len(self.face_roi) == 0:
-      dlib_shape = self.predictor(self.landmarks_image, face)
-      shape_2d = np.array([[p.x, p.y] for p in dlib_shape.parts()])
-    else:
-      dlib_shape = self.predictor(roi_img, face)
-      shape_2d = np.array([[p.x + self.face_roi[2], p.y + self.face_roi[0]] for p in dlib_shape.parts()])
+      if len(self.face_roi) == 0:
+        dlib_shape = self.predictor(self.landmarks_image, face)
+        shape_2d = np.array([[p.x, p.y] for p in dlib_shape.parts()])
+      else:
+        dlib_shape = self.predictor(roi_img, face)
+        shape_2d = np.array([[p.x + self.face_roi[2], p.y + self.face_roi[0]] for p in dlib_shape.parts()])
 
-    for s in shape_2d:
-      cv2.circle(self.landmarks_image, center=tuple(s), radius=1, color=(255, 255, 255), thickness=1, lineType=cv2.LINE_AA)
+      for s in shape_2d:
+        cv2.circle(self.landmarks_image, center=tuple(s), radius=1, color=(255, 255, 255), thickness=1, lineType=cv2.LINE_AA)
 
-    # compute face center
-    center_x, center_y = np.mean(shape_2d, axis=0).astype(np.int)
+      # compute face center
+      center_x, center_y = np.mean(shape_2d, axis=0).astype(np.int)
 
-    # draw face center
-    cv2.circle(self.landmarks_image, center=tuple((center_x, center_y)), radius=1, color=(0, 0, 255), thickness=2, lineType=cv2.LINE_AA)
+      # draw face center
+      cv2.circle(self.landmarks_image, center=tuple((center_x, center_y)), radius=1, color=(0, 0, 255), thickness=2, lineType=cv2.LINE_AA)
 
-    # compute face boundaries
-    min_coords = np.min(shape_2d, axis=0)
-    max_coords = np.max(shape_2d, axis=0)
+      # compute face boundaries
+      min_coords = np.min(shape_2d, axis=0)
+      max_coords = np.max(shape_2d, axis=0)
 
-    # draw min, max coords
-    cv2.circle(self.landmarks_image, center=tuple(min_coords), radius=1, color=(255, 0, 0), thickness=2, lineType=cv2.LINE_AA)
-    cv2.circle(self.landmarks_image, center=tuple(max_coords), radius=1, color=(255, 0, 0), thickness=2, lineType=cv2.LINE_AA)
+      # draw min, max coords
+      cv2.circle(self.landmarks_image, center=tuple(min_coords), radius=1, color=(255, 0, 0), thickness=2, lineType=cv2.LINE_AA)
+      cv2.circle(self.landmarks_image, center=tuple(max_coords), radius=1, color=(255, 0, 0), thickness=2, lineType=cv2.LINE_AA)
 
-    # compute face size
-    face_size = max(max_coords - min_coords)
-    """
-    self.face_sizes.append(face_size)
-    if len(self.face_sizes) > 10:
-      del self.face_sizes[0]
-    mean_face_size = int(np.mean(self.face_sizes))
-    """
+      # compute face size
+      face_size = max(max_coords - min_coords)
+      """
+      self.face_sizes.append(face_size)
+      if len(self.face_sizes) > 10:
+        del self.face_sizes[0]
+      mean_face_size = int(np.mean(self.face_sizes))
+      """
 
-    # compute face roi
-    self.face_roi = [int(min_coords[1] - face_size/2), int(max_coords[1] + face_size/2), 
-                      int(min_coords[0] - face_size/2), int(max_coords[0] + face_size/2)]
-    #self.face_roi = np.clip(face_roi, 0, 10000)
+      """
+      # compute face roi
+      if min_coords[1] > face_size/2:
+        left = int(min_coords[1] - face_size/2)
+      else:
+        left = 0
+      if min_coords[0] > face_size/2:
+        top = int(min_coords[0] - face_size/2)
+      else:
+        top = 0
+      right = int(max_coords[1] + face_size/2)
+      bottom = int(max_coords[0] + face_size/2)
+      """
+
+      #self.face_roi = [top, bottom, left, right]
+      #self.face_roi = np.clip(face_roi, 0, 10000)
     # <----
 
     #self.original_image = org
