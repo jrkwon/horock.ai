@@ -107,8 +107,8 @@ do
 		let "top = ( top < 0 ) ? 0 : top"
 		let "left = ( left < 0 ) ? 0 : left"
 
-		echo convert "$f" +repage -crop ${dom_w}x${dom_w}+${left}+${top} +repage "$f2"
-		convert "$f" +repage -crop ${dom_w}x${dom_w}+${left}+${top} +repage "$f2" &
+		echo convert "$f" +repage -crop ${dom_w}x${dom_w}+${left}+${top} +repage -resize 256x256 "$f2"
+		convert "$f" +repage -crop ${dom_w}x${dom_w}+${left}+${top} +repage -resize 256x256 "$f2" &
 		wait_max
 	done < $detectlog
 
