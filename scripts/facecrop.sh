@@ -7,24 +7,23 @@ NAME="$1"
 DATA_LOC="$2"
 INDIR="$DATA_LOC/$NAME-scenes"
 OUTDIR="$DATA_LOC/$NAME-faces"
-PLAN="$DATA_LOC/$NAME-faces-area.txt"
+AREA="$DATA_LOC/$NAME-faces-area.txt"
 KNOWN="$DATA_LOC/$NAME-known-faces"
 FACEDETECT_MODEL=${FACEDETECT_MODEL:-cnn}
 
-if test ! -d "$INDIR" -o ! -f "$PLAN"; then
+if test ! -d "$INDIR" -o ! -f "$AREA"; then
 	echo "Usage: $0 <name> <dataset-dir>"
 	echo "Input needed: $INDIR"
-	echo "Input needed: $PLAN"
+	echo "Input needed: $AREA"
 	exit 1
 fi
 
 . $(dirname $0)/common.sh
 
 echo "Face cropping begin ..."
-echo "We use cropping plan file: $PLAN"
+echo "We use cropping area file: $AREA"
 echo "Delete output dir: $OUTDIR"
-#rm -rf "$OUTDIR" "$OUTDIR.1"
-rm -rf "$OUTDIR"
+rm -rf "$OUTDIR" "$OUTDIR.1"
 mkdir -p "$OUTDIR" "$OUTDIR.1"
 
 #CPUS=${CPUS:-4}
@@ -59,13 +58,10 @@ do
 		fi
 		echo "$OUTDIR.1/$subdir/$subdir2" "$file"
 	done | xargs -n 2 --max-procs=$CPUS mogrify -crop ${w2}x${h2}+${left2}+${top2} -path
-done < "$PLAN"
-	#done
-#done < /dev/null
+done < "$AREA"
 
 find $OUTDIR.1 -type d | sort | while read subdir
 do
-	ls $subdir 2>/dev/null | head -1
 	if test ! -f $subdir/$(ls $subdir 2>/dev/null | head -1); then
 		continue
 	fi
@@ -78,20 +74,39 @@ do
 	echo "Reading from $detectlog"
 	read dummy dom_w <<<$(cat $detectlog | awk -F, '{ w = $3 - $5; h = $4 - $2; if( h > w ) { w = h; } if( w % 2 == 1 ) {w++;} print w}' | sort | uniq -c | sort -nr | head -1)
 	let 'dom_w = dom_w * 2'
+	IFS=, read f otop oright obottom oleft <<<$(head -1 $detectlog)
 	while IFS=, read f top right bottom left
 	do
 		COUNT=1
-		let "w = right - left"
-		let "h = bottom - top"
 		f2=${f/faces.1/faces}
 		targetdir=${f2%/*png}
 		if test ! -d "$targetdir"; then
 			mkdir -p "$targetdir"
 		fi
-		let "top = top - (dom_w - h) / 2"
+
+		let "min_right = right < oright ? right : oright"
+		let "min_bottom = bottom < obottom ? bottom : obottom"
+		let "max_left = left > oleft ? left : oleft"
+		let "max_top = top > otop ? top : otop"
+		let "intersect = (min_right - max_left) * (min_bottom - max_top)"
+		let "area = (right - left) * (bottom - top)"
+
+		echo "($oleft,$otop)-($oright,$obottom) / ($left,$top)-($right,$bottom)" $(( intersect * 100 / area ))%
+		if (( intersect * 100 / area < 90 )); then
+			otop=$top obottom=$bottom oleft=$left oright=$right
+			#Drop this frame for discontinued sequence.
+			continue
+		fi
+
+		let "w = oright - oleft"
+		let "h = obottom - otop"
+
+		let "top = otop - (dom_w - h) / 2"
+		let "left = oleft - (dom_w - w) / 2"
+
 		let "top = ( top < 0 ) ? 0 : top"
-		let "left = left - (dom_w - w) / 2"
 		let "left = ( left < 0 ) ? 0 : left"
+
 		echo convert "$f" +repage -crop ${dom_w}x${dom_w}+${left}+${top} +repage "$f2"
 		convert "$f" +repage -crop ${dom_w}x${dom_w}+${left}+${top} +repage "$f2" &
 		wait_max
