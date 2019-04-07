@@ -31,18 +31,21 @@ browse() {
 		echo "browse [<step; 100> [<from index> [<to index>]]]"
 		return
 	fi
-	$CMD | while read f
-	do
-		let 'COUNT++'
-		if test $FROM -gt $COUNT; then continue; fi
-		if test $TO -gt 0 -a $COUNT -ge $TO; then break; fi
+	$CMD | {
+		trap 'killall imgcat; exit' SIGINT
+		while read f
+		do
+			let 'COUNT++'
+			if test $FROM -gt $COUNT; then continue; fi
+			if test $TO -gt 0 -a $COUNT -ge $TO; then break; fi
 
-		if test $(($COUNT % $STEP)) = 0; then
-			echo $COUNT: $f
-			$IMGVIEW $f
-			sleep .3
-		fi
-	done
+			if test $(($COUNT % $STEP)) = 0; then
+				echo $COUNT: $f
+				$IMGVIEW $f &
+				wait
+			fi
+		done
+	}
 }
 
 if test "${PATH/opt\/bin//}" = "${PATH}"; then
