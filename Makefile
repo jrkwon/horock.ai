@@ -88,11 +88,11 @@ stamps/extract-%: stamps/facecrop-$$* ./scripts/arrange_training_set.sh
 	bash ./scripts/arrange_training_set.sh $* $(DATA_LOC) $(TRAINING_SIZE) $(TEST_SIZE)
 	touch $@
 
-stamps/facecrop-%: stamps/facetag-$$*
-	bash ./scripts/facecrop.sh $(DATA_LOC)/$*-scenes $(DATA_LOC)/$*-faces stamps/facetag-$*
+stamps/facecrop-%: $(DATA_LOC)/$$*-faces-area.txt
+	bash ./scripts/facecrop.sh $* $(DATA_LOC)
 	touch $@
 	
-stamps/facetag-%: stamps/splitscenes-$$* scripts/facetag.sh
+$(DATA_LOC)/%-faces-area.txt: stamps/splitscenes-$$* scripts/facetag.sh
 	bash ./scripts/facetag.sh $* $(DATA_LOC) $@
 
 stamps/splitscenes-%: stamps/scenes-$$*
@@ -100,11 +100,11 @@ stamps/splitscenes-%: stamps/scenes-$$*
 	touch $@
 
 stamps/scenes-%: stamps/genimages-$$*
-	ffprobe -hide_banner -show_frames -of compact=p=0 -f lavfi 'movie=$(DATA_LOC)/$*/%06d.png,select=gt(scene\,.2)' | tee $@
+	ffprobe -hide_banner -show_frames -of compact=p=0 -f lavfi 'movie=$(DATA_LOC)/$*/%06d.png,select=gt(scene\,.3)' | tee $@
 
 stamps/genimages-%: $(DATA_LOC)/$$*.mp4
 	mkdir -p $(DATA_LOC)/$*
-	ffmpeg -hide_banner -i $(DATA_LOC)/$*.mp4 -vf fps=$(FPS) $(DATA_LOC)/$*/%06d.png
+	ffmpeg -hide_banner -t 00:30:00 -i $(DATA_LOC)/$*.mp4 -vf fps=$(FPS) $(DATA_LOC)/$*/%06d.png
 	touch $@
 
 $(DATA_LOC)/%.mp4:
@@ -185,3 +185,30 @@ gpuinfo:
 
 gpuinfo2:
 	nvidia-smi -q -d UTILIZATION,ECC,TEMPERATURE,POWER,CLOCK,COMPUTE,PIDS,PERFORMANCE,SUPPORTED_CLOCKS,PAGE_RETIREMENT,ACCOUNTING,ENCODER_STATS,FBC_STATS
+
+
+## custom ffmpeg
+LIBTENSORFLOW_VERSION=gpu-linux-x86_64-1.12.0
+FFMPEG_COMMIT=b073fb9eeae8f021a4e18886ccf73cda9f67b00c
+
+build-ffmpeg: /opt/bin/ffmpeg
+
+/opt/bin/ffmpeg: FFmpeg/ffmpeg
+	sudo cp FFmpeg/ffmpeg FFmpeg/ffprobe /opt/bin/
+
+FFmpeg/ffmpeg: /opt/lib/libtensorflow.so FFmpeg/ffbuild/config.mak
+	cd FFmpeg && make
+
+FFmpeg/ffbuild/config.mak: FFmpeg/Makefile
+	cd FFmpeg && CFLAGS=-I/opt/include LDFLAGS="-L/opt/lib -Wl,-rpath=/opt/lib" ./configure --prefix=/opt --enable-libtensorflow
+
+FFmpeg/Makefile:
+	if test ! -d FFmpeg; then git clone https://github.com/FFmpeg/FFmpeg; fi
+	cd FFmpeg && git checkout $(FFMPEG_COMMIT)
+
+/opt/lib/libtensorflow.so: download/libtensorflow-$(LIBTENSORFLOW_VERSION).tar.gz
+	sudo mkdir -p /opt && sudo tar -C /opt -x -f $<
+
+download/libtensorflow-$(LIBTENSORFLOW_VERSION).tar.gz:
+	wget https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-$(LIBTENSORFLOW_VERSION).tar.gz -O $@
+
