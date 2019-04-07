@@ -46,13 +46,12 @@ head -n $TRAININGCOUNT $SRC_DATA_LOC.txt | while read file
 do
 	#Strip leading '0's upto six times, and strip trailing .png suffix
 	FILENUM=${file##*/}
-	FILENUM=${FILENUM##0} FILENUM=${FILENUM##0} FILENUM=${FILENUM##0}
-	FILENUM=${FILENUM##0} FILENUM=${FILENUM##0} FILENUM=${FILENUM##0}
 	FILENUM=${FILENUM%.png}
+	FILENUM=$(( 10#$FILENUM ))
 	let 'NUMDIFF = FILENUM - PREVFILENUM'
-	if test "$NUMDIFF" -eq 0; then
+	if test "$NUMDIFF" -ne 1; then
 		FILE1= FILE2= FILE3=
-		echo -e "\nJump detected at $file"
+		echo -e "\nJump detected at $file ($PREVFILENUM -> $FILENUM)"
 	fi
         FILE1=$FILE2
         FILE2=$FILE3
