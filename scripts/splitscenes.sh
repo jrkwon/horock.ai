@@ -1,18 +1,22 @@
 #!/bin/bash
 
-INDIR="$1"
-OUTDIR="$2"
+NAME="$1"
+DATA_LOC="$2"
 PROBES="$3"
 
-MINFILESPERSCENE=1000
+INDIR="$DATA_LOC/$NAME"
+OUTDIR="$INDIR-scenes"
+MINFILESPERSCENE=300
 
 . $(dirname $0)/common.sh
 
-if test -z "$INDIR" -o -z "$OUTDIR" -o -z "$PROBES"; then
-	echo "Usage: $0 <png-extracted-dir> <output-dir> <ffprob result>"
+if test -z "$INDIR" -o -z "$PROBES"; then
+	echo "Usage: $0 <png-extracted-dir> <ffprob result>"
+	echo "Output: <png-extracted-dir>-scenes/<subdirs>/"
 	exit 1
 fi
 
+echo "Probe file: $PROBES"
 COUNT=1
 while read LINE
 do
@@ -22,6 +26,7 @@ do
 		if test "$KEY" != "pkt_pts"; then
 			continue
 		fi
+		echo Scene change: $ENDFRAME >&2
 		echo $ENDFRAME
 		let 'COUNT++'
 	done <<< "$LINE"
@@ -34,6 +39,8 @@ SCENES=$(zeropad 4 $COUNT)
 DIRCOUNT=1
 COUNT=1
 NAME=$(basename $INDIR)
+rm -rf "$OUTDIR"
+APPROVED=
 while read ENDFRAME
 do
 	SUBDIR=$(zeropad 4 $DIRCOUNT)
@@ -42,11 +49,13 @@ do
 	if test $FILES -lt $MINFILESPERSCENE; then
 		echo "Skip this scene($SUBDIR) just has $FILES files. (min. $MINFILESPERSCENE files required)"
 		let 'DIRCOUNT++'
-		let 'COUNT = ENDFRAME + 30'
+		let 'COUNT = ENDFRAME'
 		continue
 	fi
+	let 'COUNT += 30'
 	mkdir -p "$OUTDIR/$SUBDIR/"
 	IMGFILES=""
+	APPROVED=Y
 	while test $COUNT -le $ENDFRAME
 	do
 		IMGFILE="$(zeropad 6 $COUNT).png"
@@ -65,3 +74,7 @@ do
 	let 'DIRCOUNT++'
 done < "$PROBES.1"
 
+if test -z "$APPROVED"; then
+	exit 1
+fi
+exit 0

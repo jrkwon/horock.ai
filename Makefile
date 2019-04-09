@@ -96,7 +96,7 @@ $(DATA_LOC)/%-faces-area.txt: stamps/splitscenes-$$* scripts/facetag.sh
 	bash ./scripts/facetag.sh $* $(DATA_LOC) $@
 
 stamps/splitscenes-%: stamps/scenes-$$*
-	bash ./scripts/splitscenes.sh $(DATA_LOC)/$* $(DATA_LOC)/$*-scenes stamps/scenes-$*
+	bash ./scripts/splitscenes.sh $* $(DATA_LOC) stamps/scenes-$*
 	touch $@
 
 stamps/scenes-%: stamps/genimages-$$*
