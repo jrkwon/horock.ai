@@ -103,7 +103,8 @@ stamps/scenes-%: stamps/genimages-$$*
 	ffprobe -hide_banner -show_frames -of compact=p=0 -f lavfi 'movie=$(DATA_LOC)/$*/%06d.png,select=gt(scene\,.3)' | tee $@
 
 stamps/genimages-%: $(DATA_LOC)/$$*.mp4
-	mkdir -p $(DATA_LOC)/$*
+	-rm -rf $(DATA_LOC)/$*
+	-mkdir -p $(DATA_LOC)/$*
 	ffmpeg -hide_banner -t 00:30:00 -i $(DATA_LOC)/$*.mp4 -vf fps=$(FPS) $(DATA_LOC)/$*/%06d.png
 	touch $@
 
@@ -113,7 +114,7 @@ $(DATA_LOC)/%.mp4:
 ## RECYCLE datasets
 recycle-gan-data: stamps/recycle-gan-data-$(A)-$(B)
 
-stamps/recycle-gan-data-$(A)-$(B): stamps/extract-$(A) stamps/extract-$(B)
+stamps/recycle-gan-data-$(A)-$(B): stamps/extract-$(A) stamps/extract-$(B) scripts/recycle-gan-data.sh
 	bash ./scripts/recycle-gan-data.sh $(A) $(B) $(DATA_LOC)
 	touch $@
 
@@ -123,7 +124,6 @@ stamps/recycle-gan-data-$(A)-$(B): stamps/extract-$(A) stamps/extract-$(B)
 
 train: check-condaenv
 	$(MAKE) recycle-gan 
-	#make recycle-gan 
 
 recycle-gan: stamps/recycle-gan-train-$(A)-$(B)
 stamps/recycle-gan-train-$(A)-$(B): stamps/recycle-gan-data-$(A)-$(B)
@@ -169,6 +169,9 @@ clean-all: clean
 
 clean-data:
 	$(RM) stamps/splitscenes-* stamps/genimages-* stamps/scenes-* stamps/extract-* stamps/facecrop-* stamps/facetag-*
+
+clean-%:
+	$(RM) -r stamps/*$** $(DATA_LOC)/$* $(DATA_LOC)/$*-faces* $(DATA_LOC)/$*-scenes*
 
 clean-train:
 	$(RM) stamps/recycle-gan-train-*

@@ -14,9 +14,9 @@ NAMES="$A-$B"
 DSTDIRS=( "$DATA_LOC/$NAMES/trainA" "$DATA_LOC/$NAMES/trainB" "$DATA_LOC/$NAMES/testA" "$DATA_LOC/$NAMES/testB" )
 SRCDIRS=( "$DATA_LOC/$A-faces-triplets" "$DATA_LOC/$B-faces-triplets" "$DATA_LOC/$A-faces-tests" "$DATA_LOC/$B-faces-tests")
 
+rm -rf "$DATA_LOC/$NAMES"
 for dir in "${DSTDIRS[@]}"
 do
-	echo rm -rf $dir
 	mkdir -p $dir || exit 1
 done
 
