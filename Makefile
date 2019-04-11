@@ -127,7 +127,7 @@ train: check-condaenv
 
 recycle-gan: stamps/recycle-gan-train-$(A)-$(B)
 stamps/recycle-gan-train-$(A)-$(B): stamps/recycle-gan-data-$(A)-$(B)
-	bash scripts/train_recycle_gan.sh $(A) $(B) $(GPU_ID) $(VISDOM_PORT)
+	-bash scripts/train_recycle_gan.sh $(A) $(B) $(GPU_ID) $(VISDOM_PORT)
 	touch $@
 mon: check-condaenv
 	@echo "Use VISDOM_PORT $(VISDOM_PORT)"
