@@ -129,6 +129,10 @@ recycle-gan: stamps/recycle-gan-train-$(A)-$(B)
 stamps/recycle-gan-train-$(A)-$(B): stamps/recycle-gan-data-$(A)-$(B)
 	-bash scripts/train_recycle_gan.sh $(A) $(B) $(GPU_ID) $(VISDOM_PORT)
 	touch $@
+
+stop-train:
+	test -f stamps/train.pid && kill `cat stamps/train.pid`
+
 mon: check-condaenv
 	@echo "Use VISDOM_PORT $(VISDOM_PORT)"
 	@python -m visdom.server -port $(VISDOM_PORT) & echo $$! > .visdom.pid
