@@ -1,6 +1,9 @@
-.PHONY: all clean clean-all
+.PHONY: all clean clean-all clean-train clean-test clean-video gpuinfo gpuinfo2
 .PHONY: git-clone setup-condaenv remove-condaenv check-condaenv setup
 .PHONY: step1 step2
+.PHONY: help install data train stop-train mon kmon test video make-video
+.PHONY: recycle-gan recycle-gan-test 
+.PHONY: build-ffmpeg
 
 ## We set ".SECONDEXPANSION:" for expanding '$$*' in prerequsite condition to reuse '%' part string of target.
 ## Expanding '$*' in recipes is always working w/ w/o .SECONDEXPANSION
@@ -36,6 +39,16 @@ help:
 	@echo "    make train      : train data"
 	@echo "    make test       : evaluate model"
 	@echo "    make video      : make videos from test"
+	@echo "    make stop-train : kill training process"
+	@echo ""
+	@echo "    make clean      : clean all stamps/*"
+	@echo "    make clean-all  : clean all stamps/* and datasets/* (except known face image)"
+	@echo "    make clean-AAA  : clean all AAA person related data (stamps/* and datasets/*)"
+	@echo "    make clean-train: clean train stamp"
+	@echo "    make clean-test : clean test stamp"
+	@echo "    make clean-video: clean video stamp"
+	@echo ""
+	@echo "    make clean-video: clean video stamp"
 	@echo ""
 	@echo "    make -rnd <target> will show you the dependency chain"
 
@@ -151,14 +164,14 @@ test: check-condaenv
 
 recycle-gan-test: stamps/recycle-gan-test-$(A)-$(B)
 stamps/recycle-gan-test-$(A)-$(B): stamps/recycle-gan-train-$(A)-$(B)
-	bash scripts/test_recycle_gan.sh $(A) $(B) $(TEST_SIZE) $(GPU_ID) $(EPOCH) 
+	bash scripts/test_recycle_gan.sh $(A) $(B) $(TEST_SIZE) $(GPU_ID) $(EPOCH) $(VISDOM_PORT)
 	touch $@
 
 video: check-condaenv
 	$(MAKE) make-video
 
-make-video: stamps/make-video-$(A)-$(B) stamps/recycle-gan-test-$(A)-$(B)
-stamps/make-video-$(A)-$(B):
+make-video: stamps/make-video-$(A)-$(B)
+stamps/make-video-$(A)-$(B): stamps/recycle-gan-test-$(A)-$(B)
 	bash scripts/make_video.sh AB $(A) $(B) $(EPOCH) 5
 	bash scripts/make_video.sh BA $(A) $(B) $(EPOCH) 5
 	touch $@

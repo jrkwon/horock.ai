@@ -10,3 +10,7 @@ TEST_SIZE=1000
 # Shell Environment
 export FACEDETECT_MODEL=cnn
 #export FACEDETECT_MODEL=hog
+
+# facecrop.sh
+# move cropping area if cropping areas intersection between old and current frames is different below INTERSECT_RATIO %
+export INTERSECT_RATIO=90

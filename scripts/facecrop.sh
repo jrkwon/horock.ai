@@ -10,6 +10,7 @@ OUTDIR="$DATA_LOC/$NAME-faces"
 AREA="$DATA_LOC/$NAME-faces-area.txt"
 KNOWN="$DATA_LOC/$NAME-known-faces"
 FACEDETECT_MODEL=${FACEDETECT_MODEL:-cnn}
+INTERSECT_RATIO=${INTERSECT_RATIO:-90}
 
 if test ! -d "$INDIR" -o ! -f "$AREA"; then
 	echo "Usage: $0 <name> <dataset-dir>"
@@ -92,7 +93,7 @@ do
 		let "area = (right - left) * (bottom - top)"
 
 		echo "($oleft,$otop)-($oright,$obottom) / ($left,$top)-($right,$bottom)" $(( intersect * 100 / area ))%
-		if (( intersect * 100 / area < 90 )); then
+		if (( intersect * 100 / area < $INTERSECT_RATIO )); then
 			otop=$top obottom=$bottom oleft=$left oright=$right
 			#Drop this frame for discontinued sequence.
 			continue
