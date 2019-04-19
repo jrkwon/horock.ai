@@ -15,7 +15,15 @@ The video file folder is `datasets`.
 $ python facial-landmarks/main.py video.mp4
 ```
 
+If you want scaled output
+```
+$ python facial-landmarks/main.py --scale=.25 video.mp4
+```
 
+You can also speficify extracted frame files with wildcard.
+```
+$ python facial-landmarks/main.py jaein-faces/*/*/*.png
+```
 
 
 

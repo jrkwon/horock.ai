@@ -1,9 +1,12 @@
 import cv2, dlib, sys
 import numpy as np
 import argparse
+import glob
 
 # arg parser
 parser = argparse.ArgumentParser()
+parser.add_argument("--scale", type=float, default=1.0, help="Scale factor before processing")
+parser.add_argument("--log_file", type=str, default=None, help="Face detect log")
 parser.add_argument("video_file")
 args = parser.parse_args()
 #print(args.video_file)
@@ -14,6 +17,10 @@ dataset_dir = 'datasets/'
 if '.mp4' in args.video_file:
   # video source
   video_file = dataset_dir + args.video_file ## '../datasets/jaein.mp4'
+elif '.png' in args.video_file:
+  # video source
+  video_file = glob.glob(dataset_dir + args.video_file)
+  video_file.sort()
 else:
   video_file = int(args.video_file)
 
@@ -22,7 +29,7 @@ img_show_time = 1 ## 25 # ms
 
 class FacialLandmarks:
   def __init__(self):
-    self.scaler = 1
+    self.scaler = args.scale
     # initialize face detector and shape predictor
     self.detector = dlib.get_frontal_face_detector()
     self.predictor = dlib.shape_predictor(shape_predictor)
@@ -30,21 +37,33 @@ class FacialLandmarks:
     #self.face_sizes = []
     self.original_image = None
     self.landmarks_image = None
+    self.image_sequence = None
+    self.cap = None
 
   def load_video(self, video_file):
     # load video
+    if type(video_file) is list:
+        self.image_sequence = video_file
+        return
     self.cap = cv2.VideoCapture(video_file)
 
   def find_landmarks(self):
     # read frame buffer from video
-    ret, self.landmarks_image = self.cap.read()
+    if self.cap:
+        ret, self.landmarks_image = self.cap.read()
+    else:
+        ret = len(self.image_sequence)
+        if ret:
+            self.filename = self.image_sequence.pop(0)
+            self.landmarks_image = cv2.imread(self.filename)
+
     if not ret:
       print('Done.')
       return False # no more images from the video
 
     # resize frame
-    if self.scaler != 1:
-      img = cv2.resize(img, (int(self.landmarks_image.shape[1] * self.scaler), 
+    if float(self.scaler) != 1.0:
+      self.landmarks_image = cv2.resize(self.landmarks_image, (int(self.landmarks_image.shape[1] * self.scaler), 
                             (int(self.landmarks_image.shape[0] * self.scaler))))
     #org = img.copy()
 
