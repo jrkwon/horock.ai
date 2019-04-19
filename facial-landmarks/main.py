@@ -127,10 +127,9 @@ class FacialLandmarks:
   def visualize(self, img_show_time):
     # visualize
     # cv2.imshow('original', self.original_image)
-    #cv2.imshow('facial landmarks', self.landmarks_image)
-    cv2.imsave('x', self.landmarks_image)
-    #if cv2.waitKey(img_show_time) == ord('q'):
-    #  return False
+    cv2.imshow('facial landmarks', self.landmarks_image)
+    if cv2.waitKey(img_show_time) == ord('q'):
+      return False
     return True
 
 
