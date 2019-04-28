@@ -6,11 +6,6 @@ import argparse
 import glob
 import face_recognition.api as face_recognition
 
-# Advanced Scene Detection Parameters
-INTENSITY_THRESHOLD = 16    # Pixel intensity threshold (0-255), default 16
-MINIMUM_PERCENT     = 95    # Min. amount of pixels to be below threshold.
-BLOCK_SIZE          = 32    # Num. of rows to sum per iteration.
-
 def _rect_to_css(rect):
     """
     Convert a dlib 'rect' object to a plain tuple in (top, right, bottom, left) order
