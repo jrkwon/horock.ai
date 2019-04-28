@@ -86,9 +86,9 @@ class FaceTracer:
 
     def scene_changed(self):
         #Idea borrowed: https://github.com/Breakthrough/PySceneDetect ... scenedetect/detectors/content_detector.py
-        scale = 256. / self.image.shape[0]
+        scale = 64. / self.image.shape[1]
         scene = cv2.resize(self.image, (0,0), 0, scale, scale)
-        curr_hsv = cv2.cvtColor(scene, cv2.COLOR_RGB2HSV)
+        curr_hsv = cv2.cvtColor(scene, cv2.COLOR_RGB2HSV, cv2.INTER_LANCZOS4)
         delta_hsv_avg = 0
         self.scene_change_log = ''
         if self.prev_hsv is not None:
@@ -168,8 +168,8 @@ class FaceTracer:
         picture_ratio = crop_area / (self.image.shape[0] * self.image.shape[1])
         if picture_ratio > self.full_shot_threshold:
             self.full_shot = True
-        print("{}: Area:({},{})-({},{}) Scene diff: {}, Reco dist: {:6.2f} {} {:6.2f}".format(
-            self.count, face_left, face_top, face_right, face_bottom, 
+        print("{}: Area:({},{})+({}x{}) Scene diff: {}, Reco dist: {:6.2f} {} {:6.2f}".format(
+            self.count, face_left, face_top, (face_right-face_left), (face_bottom-face_top), 
             self.scene_change_log, self.reco_distance, 
             'FULLSHOT' if self.full_shot else '', picture_ratio )
         )
