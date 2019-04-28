@@ -57,6 +57,7 @@ class FaceTracer:
         self.count = 0
         self.count_in_scene = 0
         self.full_shot = False
+        self.full_shot_threshold = .15
         self.prev_hsv = None
 
     def load_person_picture(self, file_path):
@@ -165,7 +166,7 @@ class FaceTracer:
         cv2.rectangle(self.image, (face_left, face_top), (face_right, face_bottom), (255,0,0) )
 
         picture_ratio = crop_area / (self.image.shape[0] * self.image.shape[1])
-        if picture_ratio > .15:
+        if picture_ratio > self.full_shot_threshold:
             self.full_shot = True
         print("{}: Area:({},{})-({},{}) Scene diff: {}, Reco dist: {:6.2f} {} {:6.2f}".format(
             self.count, face_left, face_top, face_right, face_bottom, 
@@ -187,6 +188,7 @@ class FaceTracer:
         self.scale = args.scale
         self.scene_threashold = args.scene_threashold
         self.reco_tolerance = args.reco
+        self.full_shot_threshold = args.fullshot
 
         self.count = 0
         while True:
@@ -218,6 +220,7 @@ parser.add_argument("--scale", type=float, default=1.0, help="Scale factor befor
 parser.add_argument("--log_file", type=str, default=None, help="Face detect log")
 parser.add_argument("--scene_threashold", type=float, default=30.0, help="Scene change detection diff-hsv threashold (default: 30.0)")
 parser.add_argument("--reco", type=float, default=0.5, help="Face diff tolerence (default: 0.5)")
+parser.add_argument("--fullshot", type=float, default=0.15, help="Threshold of fullshot detect,  crop-area / whole-area ratio")
 parser.add_argument("--start", type=int, default=0, help="Start frame")
 parser.add_argument("picture_file", default=None, help="Reference face image file")
 parser.add_argument("video_file", default=None, help="Source video file")
