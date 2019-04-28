@@ -37,7 +37,6 @@ def _trim_css_to_bounds(css, image_shape):
     return max(css[0], 0), min(css[1], image_shape[1]), min(css[2], image_shape[0]), max(css[3], 0)
 
 class FaceTracer:
-    shape_predictor = 'facial-landmarks/dlib-models/shape_predictor_68_face_landmarks.dat'
 
     def __init__(self):
         self.person_name = None
@@ -50,8 +49,8 @@ class FaceTracer:
         self.scale = 1.0
         self.reco_tolerance = 0.5
         self.roi = None
-        self.detector = dlib.get_frontal_face_detector()
-        self.predictor = dlib.shape_predictor(FaceTracer.shape_predictor)
+        self.detector = face_recognition.face_detector
+        self.predictor = face_recognition.pose_predictor_68_point
         self.scene_change_log = ''
         self.scene_keep = False
         self.count = 0
