@@ -58,6 +58,9 @@ class FaceTracer:
         self.detector = dlib.get_frontal_face_detector()
         self.predictor = dlib.shape_predictor(FaceTracer.shape_predictor)
         self.scene_change_log = ''
+        self.scene_keep = False
+        self.count = 0
+        self.count_in_scene = 0
         self.prev_hsv = None
 
     def load_person_picture(self, file_path):
@@ -86,7 +89,9 @@ class FaceTracer:
 
     def scene_changed(self):
         #Idea borrowed: https://github.com/Breakthrough/PySceneDetect ... scenedetect/detectors/content_detector.py
-        curr_hsv = cv2.cvtColor(self.image, cv2.COLOR_RGB2HSV)
+        scale = 256. / self.image.shape[0]
+        scene = cv2.resize(self.image, (0,0), 0, scale, scale)
+        curr_hsv = cv2.cvtColor(scene, cv2.COLOR_RGB2HSV)
         delta_hsv_avg = 0
         self.scene_change_log = ''
         if self.prev_hsv is not None:
@@ -114,20 +119,32 @@ class FaceTracer:
                 return i
         return -1
 
-    def inspect(self, frame_count):
+    def inspect(self):
+        sensitive_frames = 3
         if self.roi:
             self.sample = self.image[self.roi[0][1]:self.roi[1][1], self.roi[0][0]:self.roi[1][0]]
             (left, top) = (self.roi[0][0], self.roi[0][1])
         else:
             self.sample = self.image
             (left, top) = (0, 0)
+
+        if self.count_in_scene > sensitive_frames and not self.scene_keep:
+            print("{}: Skip this scene is irrelevant".format(self.count))
+            if self.count % 5 == 0:
+                cv2.imshow('sample', self.sample)
+            return
+
         cv2.imshow('sample', self.sample)
+
         interested_idx = -1
         faces = self.detector(self.sample, 1)
         interested_idx = self.recognize(faces)
         if interested_idx == -1:
-            print("{}: The face is not found".format(frame_count))
+            print("{}: The face is not found".format(self.count))
             return
+
+        if self.count_in_scene <= sensitive_frames:
+            self.scene_keep = True
 
         face = faces[interested_idx]
 
@@ -147,14 +164,14 @@ class FaceTracer:
         (face_left, face_top, face_right, face_bottom) = \
             ( left + face.left(), top + face.top(), left + face.right(), top + face.bottom() )
         cv2.rectangle(self.image, (face_left, face_top), (face_right, face_bottom), (255,0,0) )
-        print("{}: Area:({},{})-({},{}) Scene diff: {}".format(frame_count, face_left, face_top, face_right, face_bottom, self.scene_change_log))
+        print("{}: Area:({},{})-({},{}) Scene diff: {}, Reco dist: {:6.2f}".format(self.count, face_left, face_top, face_right, face_bottom, self.scene_change_log, self.reco_distance))
 
         if not self.roi and interested_idx != -1:
             self.roi = (adj_min, adj_max)
 
     def run(self, args):
         print("Picture: ", args.picture_file)
-        print("Viedo  : ", args.video_file)
+        print("Video  : ", args.video_file)
 
         if not self.load_person_picture(args.picture_file):
             return
@@ -162,18 +179,25 @@ class FaceTracer:
         self.video = cv2.VideoCapture(args.video_file)
         self.scale = args.scale
         self.scene_threashold = args.scene_threashold
+        self.reco_tolerance = args.reco
 
-        frame_count = 0
+        self.count = 0
         while True:
             if not self.read_frame():
                 break
 
-            frame_count += 1
+            self.count += 1
+            if self.count < args.start:
+                continue
 
             if self.scene_changed():
-                print("{}: Scene changed.....................................................................................".format(frame_count))
+                print("{}: Scene changed.....................................................................................".format(self.count))
                 self.roi = None
-            self.inspect(frame_count)
+                self.scene_keep = False
+                self.count_in_scene = 0
+
+            self.count_in_scene += 1
+            self.inspect()
 
             image = cv2.cvtColor(self.image, cv2.COLOR_RGB2BGR)
             cv2.imshow('facial landmarks', image)
@@ -182,9 +206,11 @@ class FaceTracer:
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--scale", type=float, default=1.0, help="Scale factor before processing")
+parser.add_argument("--scale", type=float, default=1.0, help="Scale factor before processing (default: 1.0)")
 parser.add_argument("--log_file", type=str, default=None, help="Face detect log")
-parser.add_argument("--scene_threashold", type=float, default=30.0, help="Scene change detection diff-hsv threashold")
+parser.add_argument("--scene_threashold", type=float, default=30.0, help="Scene change detection diff-hsv threashold (default: 30.0)")
+parser.add_argument("--reco", type=float, default=0.5, help="Face diff tolerence (default: 0.5)")
+parser.add_argument("--start", type=int, default=0, help="Start frame")
 parser.add_argument("picture_file", default=None, help="Reference face image file")
 parser.add_argument("video_file", default=None, help="Source video file")
 args = parser.parse_args()
