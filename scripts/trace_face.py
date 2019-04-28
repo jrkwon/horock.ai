@@ -56,6 +56,7 @@ class FaceTracer:
         self.scene_keep = False
         self.count = 0
         self.count_in_scene = 0
+        self.full_shot = False
         self.prev_hsv = None
 
     def load_person_picture(self, file_path):
@@ -120,16 +121,18 @@ class FaceTracer:
             self.sample = self.image[self.roi[0][1]:self.roi[1][1], self.roi[0][0]:self.roi[1][0]]
             (left, top) = (self.roi[0][0], self.roi[0][1])
         else:
-            self.sample = self.image
+            self.sample = self.image.copy()
             (left, top) = (0, 0)
 
         if self.count_in_scene > sensitive_frames and not self.scene_keep:
             print("{}: Skip this scene is irrelevant".format(self.count))
             if self.count % 5 == 0:
-                cv2.imshow('sample', self.sample)
+                sample = cv2.cvtColor(self.sample, cv2.COLOR_RGB2BGR)
+                cv2.imshow('roi', sample)
             return
 
-        cv2.imshow('sample', self.sample)
+        sample = cv2.cvtColor(self.sample, cv2.COLOR_RGB2BGR)
+        cv2.imshow('roi', sample)
 
         interested_idx = -1
         faces = self.detector(self.sample, 1)
@@ -150,16 +153,25 @@ class FaceTracer:
         min_coords = np.min(shape_2d, axis=0)
         max_coords = np.max(shape_2d, axis=0)
         size = max_coords - min_coords
-        size[0] /= 1.5
-        size[1] /= 1.5
+        size[0] /= 1.2
+        size[1] /= 1.2
         adj_min = tuple(min_coords - size)
         adj_max = tuple(max_coords + size)
         cv2.rectangle(self.image, adj_min, adj_max, (255, 255, 0))
+        crop_area = (adj_max[0] - adj_min[0]) * (adj_max[1] - adj_min[1])
 
         (face_left, face_top, face_right, face_bottom) = \
             ( left + face.left(), top + face.top(), left + face.right(), top + face.bottom() )
         cv2.rectangle(self.image, (face_left, face_top), (face_right, face_bottom), (255,0,0) )
-        print("{}: Area:({},{})-({},{}) Scene diff: {}, Reco dist: {:6.2f}".format(self.count, face_left, face_top, face_right, face_bottom, self.scene_change_log, self.reco_distance))
+
+        picture_ratio = crop_area / (self.image.shape[0] * self.image.shape[1])
+        if picture_ratio > .15:
+            self.full_shot = True
+        print("{}: Area:({},{})-({},{}) Scene diff: {}, Reco dist: {:6.2f} {} {:6.2f}".format(
+            self.count, face_left, face_top, face_right, face_bottom, 
+            self.scene_change_log, self.reco_distance, 
+            'FULLSHOT' if self.full_shot else '', picture_ratio )
+        )
 
         if not self.roi and interested_idx != -1:
             self.roi = (adj_min, adj_max)
@@ -188,6 +200,7 @@ class FaceTracer:
             if self.scene_changed():
                 print("{}: Scene changed.....................................................................................".format(self.count))
                 self.roi = None
+                self.full_shot = False
                 self.scene_keep = False
                 self.count_in_scene = 0
 
