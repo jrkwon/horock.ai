@@ -107,10 +107,25 @@ class FacialLandmarks:
       # compute face boundaries
       min_coords = np.min(shape_2d, axis=0)
       max_coords = np.max(shape_2d, axis=0)
+      size = max_coords - min_coords
+      size[0] /= 1.5
+      size[1] /= 1.5
+
+      left_ear  = shape_2d[0]
+      right_ear = shape_2d[16]
+      nose      = shape_2d[33]
+      chin      = shape_2d[8]
+      glabella  = shape_2d[27]
 
       # draw min, max coords
       cv2.circle(self.landmarks_image, center=tuple(min_coords), radius=1, color=(255, 0, 0), thickness=2, lineType=cv2.LINE_AA)
       cv2.circle(self.landmarks_image, center=tuple(max_coords), radius=1, color=(255, 0, 0), thickness=2, lineType=cv2.LINE_AA)
+      cv2.circle(self.landmarks_image, center=tuple(left_ear),   radius=2, color=(255, 255, 0), thickness=2, lineType=cv2.LINE_AA)
+      cv2.circle(self.landmarks_image, center=tuple(right_ear),  radius=2, color=(255, 255, 0), thickness=2, lineType=cv2.LINE_AA)
+      cv2.circle(self.landmarks_image, center=tuple(nose),       radius=2, color=(255, 255, 0), thickness=2, lineType=cv2.LINE_AA)
+      cv2.circle(self.landmarks_image, center=tuple(chin),       radius=2, color=(255, 255, 0), thickness=2, lineType=cv2.LINE_AA)
+      cv2.circle(self.landmarks_image, center=tuple(glabella),   radius=2, color=(255, 255, 0), thickness=2, lineType=cv2.LINE_AA)
+      cv2.rectangle(self.landmarks_image, tuple(min_coords - size), tuple(max_coords + size), (255, 255, 0))
 
       # compute face size
       face_size = max(max_coords - min_coords)
