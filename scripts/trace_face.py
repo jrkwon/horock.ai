@@ -5,6 +5,7 @@ import numpy as np
 import argparse
 import glob
 import face_recognition.api as face_recognition
+import traceback
 
 def _rect_to_css(rect):
     """
@@ -71,7 +72,8 @@ class FaceTracer:
         self.sample_pos = (0, 0) # Sample position on detection image (self.image)
 
         # Output cropping area
-        self.crop_area = None
+        self.detect_output = None
+        self.output = None
 
         # Face detector
         self.detector = face_recognition.face_detector
@@ -101,7 +103,7 @@ class FaceTracer:
         self.full_shot_threshold = .15
 
     def log(self, fmt, *args):
-        time_pos = "{} {:05d} {:02d}:{:02d}.{:03d})".format(self.count, self.frames, (self.time_pos // 1000) // 60, (self.time_pos // 1000) % 60, self.time_pos % 1000)
+        time_pos = "{} {:05d} {:02d}:{:02d}.{:03d}".format(self.count, self.frames, (self.time_pos // 1000) // 60, (self.time_pos // 1000) % 60, self.time_pos % 1000)
         fmt = '{}: {}'.format(time_pos, fmt)
         print(fmt.format(*args))
 
@@ -126,11 +128,13 @@ class FaceTracer:
 
         #Original image: self.original_image (BGR)
         ret, self.original_image = self.video.read()
+        if not ret:
+            return ret
         original_width = self.original_image.shape[1]
 
         if len(self.history) > 5:
             self.history.pop(0)
-        self.history.append( { 'image': self.original_image, 'crop_area': None })
+        self.history.append( { 'image': self.original_image, 'output_area': None })
 
         #Monitoring image: self.display_image (BGR)
         # self.scale = display_width / original_width
@@ -159,16 +163,6 @@ class FaceTracer:
     def fast_forward(self, msec):
         self.log("Fast forward {} msecs", msec)
         self.video.set(cv2.CAP_PROP_POS_MSEC, float(self.time_pos + msec))
-
-    def apply_crop_area(self):
-        if not self.crop_area:
-            return
-        area = [ [0,0], [0,0] ]
-        area[0][0] = self.crop_area[0][0] / self.detect_scale
-        area[0][1] = self.crop_area[0][1] / self.detect_scale
-        area[1][0] = self.crop_area[1][0] / self.detect_scale
-        area[1][1] = self.crop_area[1][1] / self.detect_scale
-        self.history[-1]['crop_area'] = area
 
     def scene_changed(self):
         #Idea borrowed: https://github.com/Breakthrough/PySceneDetect ... scenedetect/detectors/content_detector.py
@@ -207,6 +201,67 @@ class FaceTracer:
             self.sample = self.image
             self.sample_pos = (0, 0)
 
+    def calculate_roi(self, shape_2d):
+        min_coords = np.min(shape_2d, axis=0)
+        max_coords = np.max(shape_2d, axis=0)
+
+        size = max_coords - min_coords
+        size[0] /= 1.2
+        size[1] /= 1.2
+        pos  = np.array([0, 0])
+        adj_min = min_coords - size - pos
+        adj_max = max_coords + size - pos
+
+        self.roi = (adj_min, adj_max)
+
+    def calculate_fullshot(self):
+        (adj_min, adj_max) = self.roi
+        crop_size = (adj_max[0] - adj_min[0]) * (adj_max[1] - adj_min[1])
+
+        # Picture portion ratio = current-crop / whole-picture
+        picture_ratio = crop_size / (self.image.shape[0] * self.image.shape[1])
+
+        if picture_ratio > self.full_shot_threshold:
+            self.full_shot = True
+
+        return picture_ratio
+
+    def update_output_area(self):
+        overlap_ratio = 0.
+
+        (adj_min, adj_max) = self.roi
+        crop_size = (adj_max[0] - adj_min[0]) * (adj_max[1] - adj_min[1])
+
+        # Recalculate output image cropping area
+        if self.detect_output:
+            (prev_min, prev_max) = self.detect_output
+            overlap_min = ( max(prev_min[0], adj_min[0]), max(prev_min[1], adj_min[1]) )
+            overlap_max = ( min(prev_max[0], adj_max[0]), min(prev_max[1], adj_max[1]) )
+
+            # Calculation ratio of prev-current-overlapped-area / current-crop
+            overlap_ratio  = (overlap_max[0] - overlap_min[0]) * (overlap_max[1] - overlap_min[1])
+            overlap_ratio /= crop_size
+
+        if overlap_ratio < .80:
+            self.detect_output = [ e.copy() for e in self.roi ]
+            self.output = np.divide( np.array( self.detect_output ).reshape([4]), self.detect_scale ).astype(np.int32).reshape([2,2])
+            l = self.output.copy()
+            size = self.output[1] - self.output[0]
+            if size[0] > size[1]: # width > height
+                # Horizontal: Center align
+                self.output[0][0] += int((size[0] - size[1])/2)
+                self.output[1][0] = self.output[0][0] + size[1]
+            else:
+                # Vertical: Top align
+                self.output[1][1] -= size[1] - size[0]
+
+            if self.output[1][1] < self.output[1][0]:
+                self.log("SIZE: {}", l)
+
+            self.history[-1]['output_area'] = self.output
+
+        return overlap_ratio
+
     def inspect(self):
         LEADING_FRAMES = 3
 
@@ -232,52 +287,17 @@ class FaceTracer:
         shape = self.predictor(self.sample, face)
         shape_2d = np.array([[left+p.x, top+p.y] for p in shape.parts()])
 
-        min_coords = np.min(shape_2d, axis=0)
-        max_coords = np.max(shape_2d, axis=0)
-
-        size = max_coords - min_coords
-        self.log( "min, max: {} - {} : {}", min_coords, max_coords, size)
-        size[0] /= 1.2
-        size[1] /= 1.2
-        self.log( "new size {}", size)
-        pos  = np.array([0, 0])
-        adj_min = min_coords - size - pos
-        adj_max = max_coords + size - pos
-        self.log( "adj min, max: {} - {}", adj_min, adj_max)
-
-        self.roi = (adj_min.copy(), adj_max.copy())
-
-        overlap_ratio = 0.
-        crop_size = (adj_max[0] - adj_min[0]) * (adj_max[1] - adj_min[1])
-
-        # Picture portion ratio = current-crop / whole-picture
-        picture_ratio = crop_size / (self.image.shape[0] * self.image.shape[1])
-
-        if picture_ratio > self.full_shot_threshold:
-            self.full_shot = True
-
-        # Recalculate output image cropping area
-        if self.crop_area:
-            (prev_min, prev_max) = self.crop_area
-            overlap_min = ( max(prev_min[0], adj_min[0]), max(prev_min[1], adj_min[1]) )
-            overlap_max = ( min(prev_max[0], adj_max[0]), min(prev_max[1], adj_max[1]) )
-
-            # Calculation ratio of prev-current-overlapped-area / current-crop
-            overlap_ratio  = (overlap_max[0] - overlap_min[0]) * (overlap_max[1] - overlap_min[1])
-            overlap_ratio /= crop_size
-
-        if overlap_ratio < .9:
-            self.crop_area = [ e.copy() for e in self.roi ]
-
-        self.apply_crop_area()
+        self.calculate_roi(shape_2d)
+        picture_ratio = self.calculate_fullshot()
+        overlap_ratio = self.update_output_area()
 
         ## For display ........
         for s in shape_2d:
             s = np.multiply(s, self.detect2display_scale).astype(np.int32)
             cv2.circle(self.display_image, center=tuple(s), radius=1, color=(255, 255, 255), thickness=1, lineType=cv2.LINE_AA)
 
-        adj_min = tuple(np.multiply(adj_min, self.detect2display_scale).astype(np.int32))
-        adj_max = tuple(np.multiply(adj_max, self.detect2display_scale).astype(np.int32))
+        adj_min = tuple(np.multiply(self.roi[0], self.detect2display_scale).astype(np.int32))
+        adj_max = tuple(np.multiply(self.roi[1], self.detect2display_scale).astype(np.int32))
         cv2.rectangle(self.display_image, adj_min, adj_max, (255, 255, 0))
 
         face_pos = (face_left, face_top, face_right, face_bottom) = \
@@ -286,14 +306,13 @@ class FaceTracer:
         display_pos = [ int(p * self.detect2display_scale) for (i, p) in enumerate(face_pos) ]
         cv2.rectangle(self.display_image, tuple(display_pos[0:2]), tuple(display_pos[2:4]), (255,0,0) )
 
-        if self.crop_area:
-            original_pos = tuple( np.multiply( np.array( self.crop_area ).reshape([4]), 1./self.detect_scale ).astype(np.int32) )
-            cv2.rectangle(self.original_image, tuple(original_pos[0:2]), tuple(original_pos[2:4]), (255,0,0) )
-
-        self.log("Area:({},{})+({}x{}) {}, Reco-dist: {:.2f} {} Ratio:(crop/screen) {:.1f}% Overlap: (crop-overlap/curr-crop) {:.1f}",
+        self.log("Area:({},{})+({}x{}) (org:{}x{}) {}, Reco-dist: {:.2f} Fullshot: {:.1f}%({})  Overlap: {:.1f}%",
             face_left, face_top, (face_right-face_left), (face_bottom-face_top), 
+            self.output[1][0] - self.output[0][0], self.output[1][1] - self.output[0][1],
             self.scene_change_log, self.reco_distance, 
-            'FULLSHOT' if self.full_shot else '', (100. * picture_ratio), (100. * overlap_ratio)
+            (100. * picture_ratio),
+            'Y' if self.full_shot else 'N',
+            (100. * overlap_ratio)
         )
 
         return True
@@ -320,6 +339,9 @@ class FaceTracer:
             if not self.read_frame():
                 break
 
+            if 0 <= args.end < self.frames:
+                break
+
             self.count += 1
 
             if self.scene_changed():
@@ -328,17 +350,25 @@ class FaceTracer:
                 self.full_shot = False
                 self.scene_keep = False
                 self.count_in_scene = 0
+                self.detect_output = None
+                self.output = None
 
             self.count_in_scene += 1
             self.inspect()
 
-            self.log("Sample roi: {}", self.roi)
             if self.count % 5 == 0:
                 sample = cv2.cvtColor(self.sample, cv2.COLOR_RGB2BGR)
                 cv2.imshow('roi', sample)
 
             cv2.imshow('Monitor', self.display_image)
-            #cv2.imshow('Origina', self.original_image)
+            if self.output is not None:
+                output = self.original_image[self.output[0][1]:self.output[1][1], self.output[0][0]:self.output[1][0]]
+                try:
+                    output = cv2.resize(output, (256,256))
+                    cv2.imshow('Output', output)
+                except:
+                    self.log('Output {}', self.output)
+                    self.log('Dump {}', traceback.format_exc())
             if cv2.waitKey(self.rfps) == ord('q'):
               break
 
@@ -346,11 +376,12 @@ class FaceTracer:
 parser = argparse.ArgumentParser()
 parser.add_argument("--scale", type=float, default=1.0, help="Scale factor before processing (default: 1.0)")
 parser.add_argument("--log_file", type=str, default=None, help="Face detect log")
-parser.add_argument("--scene_threashold", type=float, default=50.0, help="Scene change detection diff-hsv threashold (default: 30.0)")
+parser.add_argument("--scene_threashold", type=float, default=100.0, help="Scene change detection diff-hsv threashold (default: 30.0)")
 parser.add_argument("--reco", type=float, default=0.5, help="Face diff tolerence (default: 0.5)")
 parser.add_argument("--fullshot", type=float, default=0.15, help="Threshold of fullshot detect,  crop-area / whole-area ratio")
 parser.add_argument("--detect_width", type=int, default=320, help="Width to resize for internal processing to detect faces")
 parser.add_argument("--start", type=int, default=0, help="Start frame")
+parser.add_argument("--end", type=int, default=-1, help="End frame")
 parser.add_argument("picture_file", default=None, help="Reference face image file")
 parser.add_argument("video_file", default=None, help="Source video file")
 args = parser.parse_args()
