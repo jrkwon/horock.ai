@@ -50,7 +50,7 @@ class FaceTracer:
 
         # Video time stamp
         self.time_pos = 0.
-        self.frames = 0
+        self.frame_num = 0
 
         # Video frame history (recent 5 frames?)
         self.history = []
@@ -75,6 +75,7 @@ class FaceTracer:
         # Output cropping area
         self.detect_output = None
         self.output = None
+        self.output_frame = None
 
         # Face detector
         self.detector = face_recognition.face_detector
@@ -102,11 +103,12 @@ class FaceTracer:
         # Big face?
         self.full_shot = False
         self.full_shot_threshold = .15
+        self.overlap_threshold = 0.
         self.picture_ratio = 0.
         self.overlap_ratio = 0.
 
     def log(self, fmt, *args):
-        time_pos = "{} {:05d} {:02d}:{:02d}.{:03d}".format(self.count, self.frames, (self.time_pos // 1000) // 60, (self.time_pos // 1000) % 60, self.time_pos % 1000)
+        time_pos = "{} {:05d} {:02d}:{:02d}.{:03d}".format(self.count, self.frame_num, (self.time_pos // 1000) // 60, (self.time_pos // 1000) % 60, self.time_pos % 1000)
         fmt = '{}: {}'.format(time_pos, fmt)
         print(fmt.format(*args))
 
@@ -127,12 +129,14 @@ class FaceTracer:
 
     def read_frame(self):
         self.time_pos = int(self.video.get(cv2.CAP_PROP_POS_MSEC))
-        self.frames   = int(self.video.get(cv2.CAP_PROP_POS_FRAMES))
+        self.frame_num = int(self.video.get(cv2.CAP_PROP_POS_FRAMES))
 
         #Original image: self.original_image (BGR)
         ret, self.original_image = self.video.read()
         if not ret:
             return ret
+
+        #self.log('Origin Size: {}x{}px', self.video.get( cv2.CAP_PROP_FRAME_WIDTH ), self.video.get(cv2.CAP_PROP_FRAME_HEIGHT) )
         original_width = self.original_image.shape[1]
 
         if len(self.history) > 5:
@@ -167,6 +171,15 @@ class FaceTracer:
         self.log("Fast forward {} msecs", msec)
         self.video.set(cv2.CAP_PROP_POS_MSEC, float(self.time_pos + msec))
 
+    def init_scene(self):
+        self.roi = None
+        self.full_shot = False
+        self.scene_keep = False
+        self.count_in_scene = 0
+        self.detect_output = None
+        self.face_pos = None
+        self.output = None
+
     def scene_changed(self):
         #Idea borrowed: https://github.com/Breakthrough/PySceneDetect ... scenedetect/detectors/content_detector.py
         self.scene_change_log = ''
@@ -182,7 +195,8 @@ class FaceTracer:
             #self.scene_change_log += '%6.2f ' % (delta_hsv[i])
         delta_hsv_avg = sum(delta_hsv) / 3.0
         self.scene_change_log += 'Scene-diff: %.2f' % (delta_hsv_avg)
-        if delta_hsv_avg > self.scene_threashold:
+        if delta_hsv_avg > self.scene_threshold:
+            self.scene_change_log += '(scene_threshold: >%.2f)' % ( self.scene_threshold )
             return True
         return False
 
@@ -198,9 +212,11 @@ class FaceTracer:
 
     def pick_roi_sample(self):
         if self.roi:
+            #self.log("ROI {} {}", self.roi, self.image.shape)
             self.sample = self.image[self.roi[0][1]:self.roi[1][1], self.roi[0][0]:self.roi[1][0]]
             self.sample_pos = (self.roi[0][0], self.roi[0][1])
         else:
+            #self.log("IMAGE: {}", self.image.shape)
             self.sample = self.image
             self.sample_pos = (0, 0)
 
@@ -214,6 +230,9 @@ class FaceTracer:
         pos  = np.array([0, 0])
         adj_min = min_coords - size - pos
         adj_max = max_coords + size - pos
+
+        adj_min = np.amax( [adj_min, (0,0)], 0 )
+        adj_max = np.amin( [adj_max, np.flip(np.array(self.image.shape[0:2]))], 0 )
 
         self.roi = (adj_min, adj_max)
 
@@ -245,9 +264,10 @@ class FaceTracer:
             overlap_ratio  = (overlap_max[0] - overlap_min[0]) * (overlap_max[1] - overlap_min[1])
             overlap_ratio /= crop_size
 
-        if overlap_ratio < .80:
+        if overlap_ratio < self.overlap_threshold:
             self.detect_output = [ e.copy() for e in self.roi ]
             self.output = np.divide( np.array( self.detect_output ).reshape([4]), self.detect_scale ).astype(np.int32).reshape([2,2])
+            self.output_frame = self.frame_num
             l = self.output.copy()
             size = self.output[1] - self.output[0]
             if size[0] > size[1]: # width > height
@@ -316,32 +336,31 @@ class FaceTracer:
             return
 
         self.video = cv2.VideoCapture(args.video_file)
+        if not self.video.isOpened():
+            print("Can't open video source")
+            return
+
         self.scale = args.scale
-        self.scene_threashold = args.scene_threashold
+        self.scene_threshold = args.scene_threshold
+        self.overlap_threshold = args.overlap
         self.reco_tolerance = args.reco
         self.full_shot_threshold = args.fullshot
         self.detect_width = args.detect_width
 
         self.video.set( cv2.CAP_PROP_POS_FRAMES, args.start )
-        self.count = 0
 
         while True:
             if not self.read_frame():
                 break
 
-            if 0 <= args.end < self.frames:
+            if 0 <= args.end < self.frame_num:
                 break
 
             self.count += 1
 
             if self.scene_changed():
                 self.log("{0}: Scene changed {1}", self.count, str('.') * 80)
-                self.roi = None
-                self.full_shot = False
-                self.scene_keep = False
-                self.count_in_scene = 0
-                self.detect_output = None
-                self.output = None
+                self.init_scene()
 
             self.count_in_scene += 1
 
@@ -363,7 +382,7 @@ class FaceTracer:
                 cv2.imshow('roi', sample)
 
             cv2.imshow('Monitor', self.display_image)
-            if False and self.output is not None:
+            if self.output is not None:
                 output = self.original_image[self.output[0][1]:self.output[1][1], self.output[0][0]:self.output[1][0]]
                 try:
                     output = cv2.resize(output, (256,256))
@@ -391,10 +410,11 @@ class FaceTracer:
 parser = argparse.ArgumentParser()
 parser.add_argument("--scale", type=float, default=1.0, help="Scale factor before processing (default: 1.0)")
 parser.add_argument("--log_file", type=str, default=None, help="Face detect log")
-parser.add_argument("--scene_threashold", type=float, default=100.0, help="Scene change detection diff-hsv threashold (default: 30.0)")
+parser.add_argument("--scene_threshold", type=float, default=80.0, help="Scene change detection diff-hsv threshold (default: 80.0)")
 parser.add_argument("--reco", type=float, default=0.5, help="Face diff tolerence (default: 0.5)")
 parser.add_argument("--fullshot", type=float, default=0.15, help="Threshold of fullshot detect,  crop-area / whole-area ratio")
 parser.add_argument("--detect_width", type=int, default=320, help="Width to resize for internal processing to detect faces")
+parser.add_argument("--overlap", type=float, default=.8, help="Threshold of changing new cropping area, (overlap of prev & curr)/curr")
 parser.add_argument("--throttling", type=int, default=0, help="In same scene, skip inspection next to THROTTLING frames")
 parser.add_argument("--start", type=int, default=0, help="Start frame")
 parser.add_argument("--end", type=int, default=-1, help="End frame")
