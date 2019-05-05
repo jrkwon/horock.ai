@@ -268,6 +268,19 @@ class FaceTracer:
 
         self.history[-1]['full_shot'] = self.full_shot
 
+    def calculate_overlap_ratio(self, area1, area2):
+        (area1_min, area1_max) = area1
+        area1_size = (area1_max[0] - area1_min[0]) * (area1_max[1] - area1_min[1])
+
+        (area2_min, area2_max) = area2
+        overlap_min = ( max(area2_min[0], area1_min[0]), max(area2_min[1], area1_min[1]) )
+        overlap_max = ( min(area2_max[0], area1_max[0]), min(area2_max[1], area1_max[1]) )
+
+        # Calculation ratio of prev-current-overlapped-area / current-crop
+        overlap_ratio  = (overlap_max[0] - overlap_min[0]) * (overlap_max[1] - overlap_min[1])
+        overlap_ratio /= area1_size
+        return overlap_ratio
+
     def update_output_area(self):
         overlap_ratio = 0.
 
@@ -276,27 +289,20 @@ class FaceTracer:
 
         # Recalculate output image cropping area
         if self.detect_output:
-            (prev_min, prev_max) = self.detect_output
-            overlap_min = ( max(prev_min[0], adj_min[0]), max(prev_min[1], adj_min[1]) )
-            overlap_max = ( min(prev_max[0], adj_max[0]), min(prev_max[1], adj_max[1]) )
-
-            # Calculation ratio of prev-current-overlapped-area / current-crop
-            overlap_ratio  = (overlap_max[0] - overlap_min[0]) * (overlap_max[1] - overlap_min[1])
-            overlap_ratio /= crop_size
+            overlap_ratio = self.calculate_overlap_ratio(self.roi, self.detect_output)
 
         if overlap_ratio < self.overlap_threshold:
             self.detect_output = [ e.copy() for e in self.roi ]
-            self.output = np.divide( np.array( self.detect_output ).reshape([4]), self.detect_scale ).astype(np.int32).reshape([2,2])
+            self.output = np.divide( self.detect_output, self.detect_scale ).astype(np.int32)
             self.output_frame = self.frame_num
-            l = self.output.copy()
             size = self.output[1] - self.output[0]
-            if size[0] > size[1]: # width > height
-                # Horizontal: Center align
+            if size[0] < size[1]: # width < height
+                # Horizontal: Enlarge the width to the same size of height keeping center align
                 self.output[0][0] += int((size[0] - size[1])/2)
                 self.output[1][0] = self.output[0][0] + size[1]
             else:
-                # Vertical: Top align
-                self.output[1][1] -= size[1] - size[0]
+                # Vertical: Enlarge the height to the same size of width keeping bottom align
+                self.output[0][1] -= size[0] - size[1]
 
         self.history[-1]['output_area'] = self.output
         self.overlap_ratio = overlap_ratio
@@ -345,12 +351,18 @@ class FaceTracer:
         display_pos = [ int(p * self.detect2display_scale) for (i, p) in enumerate(self.face_pos) ]
         cv2.rectangle(self.display_image, tuple(display_pos[0:2]), tuple(display_pos[2:4]), (255,0,0) )
 
+        if self.output is not None:
+            output = np.multiply(self.output, self.scale ).astype(np.int32)
+            cv2.rectangle(self.display_image, tuple(output[0]), tuple(output[1]), (0,0,255) )
+
         return True
 
     def write_frame(self):
         self.display_output = None
         if self.output is None:
-            self.output_triplets = []
+            return
+
+        if not self.full_shot:
             return
 
         output = self.original_image[self.output[0][1]:self.output[1][1], self.output[0][0]:self.output[1][0]]
