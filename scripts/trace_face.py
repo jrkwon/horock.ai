@@ -110,10 +110,11 @@ class FaceTracer:
         self.picture_ratio = 0.
         self.overlap_ratio = 0.
 
+        self.roi_history = []
         self.output_triplets = []
         self.output_last_frame = -1
         self.output_last_size = ''
-        self.output_count = 0
+        self.output_count = {}
         self.output_dir = './output'
         self.output_width  = 256
         self.output_height = 256
@@ -245,9 +246,8 @@ class FaceTracer:
         max_coords = np.max(shape_2d, axis=0)
 
         size = max_coords - min_coords
-        size[0] /= 1.2
-        size[1] /= 1.2
-        pos  = np.array([0, 0])
+        size = np.multiply(size, .8).astype(np.int32)
+        pos  = np.array([0, size[1] * .25]).astype(np.int32)
         adj_min = min_coords - size - pos
         adj_max = max_coords + size - pos
 
@@ -292,7 +292,14 @@ class FaceTracer:
             overlap_ratio = self.calculate_overlap_ratio(self.roi, self.detect_output)
 
         if overlap_ratio < self.overlap_threshold:
-            self.detect_output = [ e.copy() for e in self.roi ]
+            self.detect_output = None
+            for roi in self.roi_history:
+                olap = self.calculate_overlap_ratio(self.roi, roi)
+                if overlap_ratio < olap:
+                    self.detect_output = roi
+                    overlap_ratio = olap
+            if self.detect_output is None:
+                self.detect_output = [ e.copy() for e in self.roi ]
             self.output = np.divide( self.detect_output, self.detect_scale ).astype(np.int32)
             self.output_frame = self.frame_num
             size = self.output[1] - self.output[0]
@@ -302,7 +309,9 @@ class FaceTracer:
                 self.output[1][0] = self.output[0][0] + size[1]
             else:
                 # Vertical: Enlarge the height to the same size of width keeping bottom align
-                self.output[0][1] -= size[0] - size[1]
+                diff = min(size[0] - size[1], self.output[0][1])
+                self.output[0][1] -= min(size[0] - size[1], self.output[0][1])
+                self.output[1][1] += (size[0] - size[1]) - diff
 
         self.history[-1]['output_area'] = self.output
         self.overlap_ratio = overlap_ratio
@@ -385,8 +394,15 @@ class FaceTracer:
         if len(self.output_triplets) != 3:
             return
 
-        filename = "%s/%06d.png" % (self.output_dir, self.output_count)
-        self.output_count += 1
+        if output_size not in self.output_count:
+            try:
+                os.mkdir("%s/%s" % (self.output_dir, output_size))
+            except FileExistsError:
+                pass
+            self.output_count[output_size] = 0
+
+        filename = "%s/%s/%06d.png" % (self.output_dir, output_size, self.output_count[output_size])
+        self.output_count[output_size] += 1
         output_img = np.concatenate(self.output_triplets, axis=1)
         cv2.imwrite(filename, output_img)
         cv2.imshow('Triplet', output_img)
