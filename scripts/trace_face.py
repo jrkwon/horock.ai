@@ -292,14 +292,22 @@ class FaceTracer:
             overlap_ratio = self.calculate_overlap_ratio(self.roi, self.detect_output)
 
         if overlap_ratio < self.overlap_threshold:
+            self.log('ROI overlap < threhold: {:.2f} < {:.2f}', overlap_ratio, self.overlap_threshold)
             self.detect_output = None
             for roi in self.roi_history:
                 olap = self.calculate_overlap_ratio(self.roi, roi)
+                self.log('ROI History: roi:{},{}+{}x{} : {},{}+{}x{} ({:.2f})',
+                    self.roi[0][0], self.roi[0][1], self.roi[1][0] - self.roi[0][0], self.roi[1][1] - self.roi[0][1],
+                    roi[0][0], roi[0][1], roi[1][0] - roi[0][0], roi[1][1] - roi[0][1],
+                    olap)
+                if olap < self.overlap_threshold:
+                    continue
                 if overlap_ratio < olap:
                     self.detect_output = roi
                     overlap_ratio = olap
             if self.detect_output is None:
                 self.detect_output = [ e.copy() for e in self.roi ]
+                self.roi_history.append(self.detect_output)
             self.output = np.divide( self.detect_output, self.detect_scale ).astype(np.int32)
             self.output_frame = self.frame_num
             size = self.output[1] - self.output[0]
@@ -312,6 +320,11 @@ class FaceTracer:
                 diff = min(size[0] - size[1], self.output[0][1])
                 self.output[0][1] -= min(size[0] - size[1], self.output[0][1])
                 self.output[1][1] += (size[0] - size[1]) - diff
+            self.log('ROI Select: roi:{},{}+{}x{} -> org:{},{}+{}x{}',
+                self.detect_output[0][0], self.detect_output[0][1],
+                self.detect_output[1][0] - self.detect_output[0][0], self.detect_output[1][1] - self.detect_output[0][1],
+                self.output[0][0], self.output[0][1],
+                self.output[1][0] - self.output[0][0], self.output[1][1] - self.output[0][1] )
 
         self.history[-1]['output_area'] = self.output
         self.overlap_ratio = overlap_ratio
@@ -479,13 +492,14 @@ class FaceTracer:
 
             if self.face_pos is not None:
                 (face_left, face_top, face_right, face_bottom) = self.face_pos
-                self.log("Area:({},{})+({}x{}) (org:{}x{}) {}, Reco-dist: {:.2f} Fullshot: {:.1f}%({})  Overlap: {:.1f}% {}",
+                self.log("face:{},{}+{}x{} roi:{},{}+{}x{} org:{},{}+{}x{} {}, Reco-dist: {:.2f} Fullshot: {:.1f}%({})  Overlap: {:.2f} {}",
                     face_left, face_top, (face_right-face_left), (face_bottom-face_top), 
-                    self.output[1][0] - self.output[0][0], self.output[1][1] - self.output[0][1],
+                    self.roi[0][0], self.roi[0][1], self.roi[1][0] - self.roi[0][0], self.roi[1][1] - self.roi[0][1],
+                    self.output[0][0], self.output[0][1], self.output[1][0] - self.output[0][0], self.output[1][1] - self.output[0][1],
                     self.scene_change_log, self.reco_distance, 
                     (100. * self.picture_ratio),
                     'Y' if self.full_shot else 'N',
-                    (100. * self.overlap_ratio),
+                    self.overlap_ratio,
                     '(throttling)' if throttling else ''
                 )
 
