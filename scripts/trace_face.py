@@ -91,6 +91,9 @@ class FaceTracer:
         # Scene change detection log
         self.scene_change_log = ''
 
+        # Cloth change detection
+        self.cloth = None
+
         # So, this scene is relavant?
         self.scene_keep = False
 
@@ -107,6 +110,13 @@ class FaceTracer:
         self.picture_ratio = 0.
         self.overlap_ratio = 0.
 
+        self.output_triplets = []
+        self.output_last_frame = -1
+        self.output_count = 0
+        self.output_dir = './output'
+        self.output_width  = 256
+        self.output_height = 256
+
     def log(self, fmt, *args):
         time_pos = "{} {:05d} {:02d}:{:02d}.{:03d}".format(self.count, self.frame_num, (self.time_pos // 1000) // 60, (self.time_pos // 1000) % 60, self.time_pos % 1000)
         fmt = '{}: {}'.format(time_pos, fmt)
@@ -115,7 +125,8 @@ class FaceTracer:
     def load_person_picture(self, file_path):
         basename = os.path.splitext(os.path.basename(file_path))[0]
         img = face_recognition.load_image_file(file_path)
-        encodings = face_recognition.face_encodings(img)
+        faces = self.detector(img, 1)
+        encodings = face_recognition.face_encodings(img, [_trim_css_to_bounds(_rect_to_css(face), img.shape) for face in faces])
         if len(encodings) > 1:
             print("Error: The picture file has  more than one faces: {}", file_path)
             return False
@@ -125,7 +136,15 @@ class FaceTracer:
 
         self.person_name    = basename
         self.person_picture = encodings[0]
+
         return True
+
+    def crop_cloth(self, image, sample_pos, face):
+        (left, top) = sample_pos
+        (face_left, face_top, face_right, face_bottom) = \
+            ( left + face.left(), top + face.top(), left + face.right(), top + face.bottom() )
+        height = face_bottom - face_top
+        return image[face_bottom+height//2:face_bottom+height, face_left:face_right]
 
     def read_frame(self):
         self.time_pos = int(self.video.get(cv2.CAP_PROP_POS_MSEC))
@@ -327,6 +346,31 @@ class FaceTracer:
 
         return True
 
+    def write_frame(self):
+        self.display_output = None
+        if self.output is None:
+            self.output_triplets = []
+            return
+
+        if self.frame_num != self.output_last_frame + 1:
+            self.output_triplets = []
+
+        if len(self.output_triplets) == 3:
+            self.output_triplets.pop(0)
+
+        output = self.original_image[self.output[0][1]:self.output[1][1], self.output[0][0]:self.output[1][0]]
+        self.display_output = cv2.resize(output, (self.output_width,self.output_height))
+        self.output_triplets.append(self.display_output)
+        self.output_last_frame = self.frame_num
+
+        if len(self.output_triplets) != 3:
+            return
+
+        filename = "%s/%06d.png" % (self.output_dir, self.output_count)
+        self.output_count += 1
+        output_img = np.concatenate(self.output_triplets, axis=1)
+        cv2.imwrite(filename, output_img)
+        cv2.imshow('Triplet', output_img)
 
     def run(self, args):
         print("Picture: ", args.picture_file)
@@ -346,8 +390,18 @@ class FaceTracer:
         self.reco_tolerance = args.reco
         self.full_shot_threshold = args.fullshot
         self.detect_width = args.detect_width
+        if 'x' not in args.output_size:
+            print("Invalid size ('x' should be exists in size)")
+            return
+        (self.output_width, self.output_height) = [ int(v) for v in args.output_size.split('x') ]
+        print('Scale:', self.scale)
+        print('Scene threshold:', self.scene_threshold)
+        print('Overlap threshold:', self.overlap_threshold)
+        print('Reco tolerance:', self.reco_tolerance)
+        print('Full-shot threshold:', self.full_shot_threshold)
+        print('Internal detect width:', self.detect_width)
 
-        self.video.set( cv2.CAP_PROP_POS_FRAMES, args.start )
+        self.video.set( cv2.CAP_PROP_POS_FRAMES, args.begin )
 
         while True:
             if not self.read_frame():
@@ -383,13 +437,8 @@ class FaceTracer:
 
             cv2.imshow('Monitor', self.display_image)
             if self.output is not None:
-                output = self.original_image[self.output[0][1]:self.output[1][1], self.output[0][0]:self.output[1][0]]
-                try:
-                    output = cv2.resize(output, (256,256))
-                    cv2.imshow('Output', output)
-                except:
-                    self.log('Output {}', self.output)
-                    self.log('Dump {}', traceback.format_exc())
+                self.write_frame()
+                cv2.imshow('Output', self.display_output)
 
             if self.face_pos is not None:
                 (face_left, face_top, face_right, face_bottom) = self.face_pos
@@ -408,16 +457,18 @@ class FaceTracer:
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--scale", type=float, default=1.0, help="Scale factor before processing (default: 1.0)")
-parser.add_argument("--log_file", type=str, default=None, help="Face detect log")
-parser.add_argument("--scene_threshold", type=float, default=80.0, help="Scene change detection diff-hsv threshold (default: 80.0)")
-parser.add_argument("--reco", type=float, default=0.5, help="Face diff tolerence (default: 0.5)")
-parser.add_argument("--fullshot", type=float, default=0.15, help="Threshold of fullshot detect,  crop-area / whole-area ratio")
-parser.add_argument("--detect_width", type=int, default=320, help="Width to resize for internal processing to detect faces")
-parser.add_argument("--overlap", type=float, default=.8, help="Threshold of changing new cropping area, (overlap of prev & curr)/curr")
-parser.add_argument("--throttling", type=int, default=0, help="In same scene, skip inspection next to THROTTLING frames")
-parser.add_argument("--start", type=int, default=0, help="Start frame")
-parser.add_argument("--end", type=int, default=-1, help="End frame")
+parser.add_argument("-s", "--scale", type=float, default=1.0, help="Scale factor before processing (default: 1.0)")
+parser.add_argument("-l", "--log_file", type=str, default=None, help="Face detect log")
+parser.add_argument("-c", "--scene_threshold", type=float, default=80.0, help="Scene change detection diff-hsv threshold (default: 80.0)")
+parser.add_argument("-r", "--reco", type=float, default=0.5, help="Face diff tolerence (default: 0.5)")
+parser.add_argument("-f", "--fullshot", type=float, default=0.15, help="Threshold of fullshot detect,  crop-area / whole-area ratio")
+parser.add_argument("-w", "--detect_width", type=int, default=320, help="Width to resize for internal processing to detect faces")
+parser.add_argument("-L", "--overlap", type=float, default=.8, help="Threshold of changing new cropping area, (overlap of prev & curr)/curr")
+parser.add_argument("-t", "--throttling", type=int, default=0, help="In same scene, skip inspection next to THROTTLING frames")
+parser.add_argument("-b", "--begin", "--start", dest="begin", type=int, default=0, help="Start frame")
+parser.add_argument("-e", "--end", type=int, default=-1, help="End frame")
+parser.add_argument("-o", "--output", dest="output_dir", type=str, default="./output", help="Output directory")
+parser.add_argument("-x", "--output_size", dest="output_size", type=str, default="256x256", help="Output W x H size")
 parser.add_argument("picture_file", default=None, help="Reference face image file")
 parser.add_argument("video_file", default=None, help="Source video file")
 args = parser.parse_args()
