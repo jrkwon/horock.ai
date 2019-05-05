@@ -112,6 +112,7 @@ class FaceTracer:
 
         self.output_triplets = []
         self.output_last_frame = -1
+        self.output_last_size = ''
         self.output_count = 0
         self.output_dir = './output'
         self.output_width  = 256
@@ -352,16 +353,22 @@ class FaceTracer:
             self.output_triplets = []
             return
 
+        output = self.original_image[self.output[0][1]:self.output[1][1], self.output[0][0]:self.output[1][0]]
+        output_size = '%dx%d' % ( output.shape[1], output.shape[0] )
+
         if self.frame_num != self.output_last_frame + 1:
+            self.output_triplets = []
+
+        if self.output_last_size != output_size:
             self.output_triplets = []
 
         if len(self.output_triplets) == 3:
             self.output_triplets.pop(0)
 
-        output = self.original_image[self.output[0][1]:self.output[1][1], self.output[0][0]:self.output[1][0]]
         self.display_output = cv2.resize(output, (self.output_width,self.output_height))
         self.output_triplets.append(self.display_output)
         self.output_last_frame = self.frame_num
+        self.output_last_size = output_size
 
         if len(self.output_triplets) != 3:
             return
@@ -390,6 +397,7 @@ class FaceTracer:
         self.reco_tolerance = args.reco
         self.full_shot_threshold = args.fullshot
         self.detect_width = args.detect_width
+        self.output_dir = args.output_dir
         if 'x' not in args.output_size:
             print("Invalid size ('x' should be exists in size)")
             return
@@ -400,6 +408,7 @@ class FaceTracer:
         print('Reco tolerance:', self.reco_tolerance)
         print('Full-shot threshold:', self.full_shot_threshold)
         print('Internal detect width:', self.detect_width)
+        print('Output dir:', self.output_dir)
 
         self.video.set( cv2.CAP_PROP_POS_FRAMES, args.begin )
 
