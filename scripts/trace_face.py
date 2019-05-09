@@ -379,13 +379,13 @@ class FaceTracer:
 
         return True
 
-    def write_frame(self):
+    def write_frame(self, frame_max):
         self.display_output = None
         if self.output is None:
-            return
+            return False
 
         if not self.full_shot:
-            return
+            return False
 
         output = self.original_image[self.output[0][1]:self.output[1][1], self.output[0][0]:self.output[1][0]]
         output_size = '%dx%d' % ( output.shape[1], output.shape[0] )
@@ -405,7 +405,7 @@ class FaceTracer:
         self.output_last_size = output_size
 
         if len(self.output_triplets) != 3:
-            return
+            return False
 
         if output_size not in self.output_count:
             try:
@@ -414,11 +414,16 @@ class FaceTracer:
                 pass
             self.output_count[output_size] = 0
 
+        if 0 < frame_max < self.output_count[output_size]:
+            self.log('Maximum count reached: {}', frame_max)
+            return True
+
         filename = "%s/%s/%06d.png" % (self.output_dir, output_size, self.output_count[output_size])
         self.output_count[output_size] += 1
         output_img = np.concatenate(self.output_triplets, axis=1)
         cv2.imwrite(filename, output_img)
         cv2.imshow('Triplet', output_img)
+        return False
 
     def run(self, args):
         print("Picture: ", args.picture_file)
@@ -487,7 +492,8 @@ class FaceTracer:
 
             cv2.imshow('Monitor', self.display_image)
             if self.output is not None:
-                self.write_frame()
+                if self.write_frame(args.max):
+                    break
                 cv2.imshow('Output', self.display_output)
 
             if self.face_pos is not None:
@@ -518,6 +524,7 @@ parser.add_argument("-L", "--overlap", type=float, default=.8, help="Threshold o
 parser.add_argument("-t", "--throttling", type=int, default=0, help="In same scene, skip inspection next to THROTTLING frames")
 parser.add_argument("-b", "--begin", "--start", dest="begin", type=int, default=0, help="Start frame")
 parser.add_argument("-e", "--end", type=int, default=-1, help="End frame")
+parser.add_argument("-m", "--max", type=int, default=5000, help="Maximum output images")
 parser.add_argument("-o", "--output", dest="output_dir", type=str, default="./output", help="Output directory")
 parser.add_argument("-x", "--output_size", dest="output_size", type=str, default="256x256", help="Output W x H size")
 parser.add_argument("picture_file", default=None, help="Reference face image file")
