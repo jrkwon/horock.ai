@@ -104,6 +104,7 @@ class FaceTracer:
 
         # Read count in a scene
         self.count_in_scene = 0
+        self.skip_in_scene = 0
 
         # Big face?
         self.full_shot = False
@@ -202,6 +203,7 @@ class FaceTracer:
         self.full_shot = False
         self.scene_keep = False
         self.count_in_scene = 0
+        self.skip_in_scene = 0
         self.detect_output = None
         self.face_pos = None
         self.output = None
@@ -343,6 +345,7 @@ class FaceTracer:
         self.pick_roi_sample()
 
         if self.count_in_scene > LEADING_FRAMES and not self.scene_keep:
+            self.skip_in_scene += 1
             self.log("Skip, this scene is irrelevant: {}", self.scene_change_log)
             self.fast_forward(1000)
             return False
@@ -350,7 +353,10 @@ class FaceTracer:
         faces = self.detector(self.sample, 1)
         interested_idx = self.recognize(faces)
         if interested_idx == -1:
+            self.skip_in_scene += 1
             self.log("Skip, the relavant face not found: {}", self.scene_change_log)
+            if self.skip_in_scene > 30:
+                self.fast_forward(1000)
             return False
 
         if self.count_in_scene <= LEADING_FRAMES:
@@ -448,7 +454,7 @@ class FaceTracer:
         c = max(cnts, key=cv2.contourArea)
         cv2.fillPoly(self.display_output,pts=[c], color=self.chroma)
 
-    def write_frame(self, frame_max):
+    def write_frame(self, mode, frame_max):
         if not self.full_shot:
             return False
 
@@ -483,13 +489,19 @@ class FaceTracer:
 
         filename = "%s/%s/%06d.png" % (self.output_dir, output_size, self.output_count[output_size])
         self.output_count[output_size] += 1
-        output_img = np.concatenate(self.output_triplets, axis=1)
+        if mode == 'train':
+            output_img = np.concatenate(self.output_triplets, axis=1)
+        elif mode == 'test':
+            output_img = self.display_output
+        else:
+            return False
         cv2.imwrite(filename, output_img)
-        output_img = cv2.resize(output_img, (0,0), 0, self.triplete_scale, self.triplete_scale)
-        cv2.imshow('Triplet', output_img)
+        output_img = cv2.resize(output_img, (0,0), 0, self.output_scale, self.output_scale)
+        cv2.imshow('Write', output_img)
         return False
 
     def init_variables(self, args):
+        print("Mode: ", args.mode)
         print("Picture: ", args.picture_file)
         print("Video  : ", args.video_file)
 
@@ -524,14 +536,14 @@ class FaceTracer:
         self.erode_dilate = args.erode_dilate
 
         #Output related
-        self.output_dir = args.output_dir
+        self.output_dir = '/'.join( filter( lambda p: p,  args.output_dir.split('/') ) ) + '/' + args.mode
         os.makedirs(self.output_dir, exist_ok=True)
         if 'x' not in args.output_size:
             print("Invalid size ('x' should be exists in size)")
             return False
 
         (self.output_width, self.output_height) = [ int(v) for v in args.output_size.split('x') ]
-        self.triplete_scale = args.triplete_scale
+        self.output_scale = args.output_scale
         self.hide_display = args.hide_display
 
         print('Scale:', self.scale)
@@ -586,9 +598,9 @@ class FaceTracer:
             cv2.imshow('Monitor', self.display_image)
             if self.output is not None:
                 self.erase_background()
-                if self.write_frame(args.max):
+                if self.write_frame(args.mode, args.max):
                     break
-                cv2.imshow('Output', self.display_output)
+                #cv2.imshow('Output', self.display_output)
 
 
             if self.face_pos is not None:
@@ -622,11 +634,12 @@ parser.add_argument("-e", "--end", type=int, default=-1, help="End frame")
 parser.add_argument("-m", "--max", type=int, default=5000, help="Maximum output images")
 parser.add_argument("-o", "--output", dest="output_dir", type=str, default="./output", help="Output directory")
 parser.add_argument("-x", "--output_size", dest="output_size", type=str, default="256x256", help="Output W x H size")
-parser.add_argument("-p", "--triplete_scale", dest="triplete_scale", type=float, default=1.0, help="Display triplete in scale TRIPLETE_SCALE")
+parser.add_argument("-p", "--output_scale", dest="output_scale", type=float, default=1.0, help="Output monitoring scale")
 parser.add_argument("-B", "--bg", dest="bg", type=str, default='', help="Background area formula: 'X?n,[X?n[...]]' [X = H,S,V(Grayscale),R,G,B] [? = < >] [n = 0~255]")
 parser.add_argument("-E", "--erode", dest="erode_dilate", type=int, default=10, help="Erode/Dilate after finding background area")
 parser.add_argument("-C", "--chroma", dest="chroma", type=str, default='FFFFFF', help="Background filling color (default:FFFFFF; rgb)")
 parser.add_argument("-H", "--hide", dest="hide_display", action='store_true', default=False, help="Hide background intermediate images")
+parser.add_argument("mode", default=None, help="Run mode: train, test")
 parser.add_argument("picture_file", default=None, help="Reference face image file")
 parser.add_argument("video_file", default=None, help="Source video file")
 args = parser.parse_args()
