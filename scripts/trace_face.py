@@ -6,6 +6,7 @@ import argparse
 import glob
 import face_recognition.api as face_recognition
 import traceback
+import re
 
 def _rect_to_css(rect):
     """
@@ -76,6 +77,7 @@ class FaceTracer:
         self.detect_output = None
         self.output = None
         self.output_frame = None
+        self.output_image = None
 
         # Face detector
         self.detector = face_recognition.face_detector
@@ -118,6 +120,9 @@ class FaceTracer:
         self.output_dir = './output'
         self.output_width  = 256
         self.output_height = 256
+
+        self.bgformula = None
+        self.chroma = (255,255,255)
 
     def log(self, fmt, *args):
         time_pos = "{} {:05d} {:02d}:{:02d}.{:03d}".format(self.count, self.frame_num, (self.time_pos // 1000) // 60, (self.time_pos // 1000) % 60, self.time_pos % 1000)
@@ -200,6 +205,7 @@ class FaceTracer:
         self.detect_output = None
         self.face_pos = None
         self.output = None
+        self.output_image = None
 
     def scene_changed(self):
         #Idea borrowed: https://github.com/Breakthrough/PySceneDetect ... scenedetect/detectors/content_detector.py
@@ -328,6 +334,8 @@ class FaceTracer:
 
         self.history[-1]['output_area'] = self.output
         self.overlap_ratio = overlap_ratio
+        self.output_image = self.original_image[self.output[0][1]:self.output[1][1], self.output[0][0]:self.output[1][0]]
+        self.display_output = cv2.resize(self.output_image, (self.output_width,self.output_height))
 
     def inspect(self):
         LEADING_FRAMES = 3
@@ -379,16 +387,72 @@ class FaceTracer:
 
         return True
 
-    def write_frame(self, frame_max):
-        self.display_output = None
-        if self.output is None:
+    def erase_background(self):
+        if not self.full_shot:
+            return False
+        if not self.display_output is not None:
             return False
 
+        if not self.bgformula:
+            return False
+
+        hsv = None
+        rgb = None
+        channels = {}
+        for f in self.bgformula:
+            (ch, compare, val) = f
+            if ch in ('R', 'G', 'B'):
+                if rgb is None:
+                    rgb = cv2.cvtColor(self.display_output, cv2.COLOR_BGR2RGB)
+                    rgb = cv2.GaussianBlur(rgb, (5, 5), 0)
+                    red, green, blue = cv2.split(rgb)
+                    channels['R'] = red
+                    channels['G'] = green
+                    channels['B'] = blue
+                    rgb = np.concatenate([red, green, blue], axis=1)
+                    if not self.hide_display:
+                        cv2.imshow('RGB', rgb)
+            elif ch in ('H', 'S', 'V'):
+                if hsv is None:
+                    hsv = cv2.cvtColor(self.display_output, cv2.COLOR_BGR2HSV)
+                    hsv = cv2.GaussianBlur(hsv, (5, 5), 0)
+                    hue, sat, gray = cv2.split(hsv)
+                    channels['H'] = hue
+                    channels['S'] = sat
+                    channels['V'] = gray
+                    hue = cv2.cvtColor(hue.copy(), cv2.COLOR_GRAY2BGR)
+                    sat = cv2.cvtColor(sat.copy(), cv2.COLOR_GRAY2BGR)
+                    gray = cv2.cvtColor(gray.copy(), cv2.COLOR_GRAY2BGR)
+                    hsv = np.concatenate([hue, sat, gray], axis=1)
+                    if not self.hide_display:
+                        cv2.imshow('HSV', hsv)
+            else:
+                raise Exception('Invalid channel', ch)
+
+        mask = None
+        for f in self.bgformula:
+            (ch, compare, val) = f
+            thresh = cv2.threshold(channels[ch], val, 255, cv2.THRESH_BINARY if compare == '>' else cv2.THRESH_BINARY_INV)
+            thresh = thresh[1]
+            if self.erode_dilate:
+                thresh = cv2.erode(thresh, None, iterations=self.erode_dilate)
+                thresh = cv2.dilate(thresh, None, iterations=self.erode_dilate)
+            mask = cv2.bitwise_and(thresh, thresh, mask = mask) if mask is None else thresh
+        if not self.hide_display:
+            cv2.imshow('Mask', mask)
+
+        cnts = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        cnts = cnts[0 if len(cnts) == 2 else 1]
+        if len(cnts) == 0:
+            return
+        c = max(cnts, key=cv2.contourArea)
+        cv2.fillPoly(self.display_output,pts=[c], color=self.chroma)
+
+    def write_frame(self, frame_max):
         if not self.full_shot:
             return False
 
-        output = self.original_image[self.output[0][1]:self.output[1][1], self.output[0][0]:self.output[1][0]]
-        output_size = '%dx%d' % ( output.shape[1], output.shape[0] )
+        output_size = '%dx%d' % ( self.output_image.shape[1], self.output_image.shape[0] )
 
         if self.frame_num != self.output_last_frame + 1:
             self.output_triplets = []
@@ -399,7 +463,6 @@ class FaceTracer:
         if len(self.output_triplets) == 3:
             self.output_triplets.pop(0)
 
-        self.display_output = cv2.resize(output, (self.output_width,self.output_height))
         self.output_triplets.append(self.display_output)
         self.output_last_frame = self.frame_num
         self.output_last_size = output_size
@@ -414,7 +477,7 @@ class FaceTracer:
                 pass
             self.output_count[output_size] = 0
 
-        if 0 < frame_max < self.output_count[output_size]:
+        if 0 < frame_max <= self.output_count[output_size]:
             self.log('Maximum count reached: {}', frame_max)
             return True
 
@@ -422,32 +485,54 @@ class FaceTracer:
         self.output_count[output_size] += 1
         output_img = np.concatenate(self.output_triplets, axis=1)
         cv2.imwrite(filename, output_img)
+        output_img = cv2.resize(output_img, (0,0), 0, self.triplete_scale, self.triplete_scale)
         cv2.imshow('Triplet', output_img)
         return False
 
-    def run(self, args):
+    def init_variables(self, args):
         print("Picture: ", args.picture_file)
         print("Video  : ", args.video_file)
 
         if not self.load_person_picture(args.picture_file):
-            return
+            return False
 
         self.video = cv2.VideoCapture(args.video_file)
         if not self.video.isOpened():
             print("Can't open video source")
-            return
+            return False
 
         self.scale = args.scale
         self.scene_threshold = args.scene_threshold
+
+        #Face Detecting
         self.overlap_threshold = args.overlap
         self.reco_tolerance = args.reco
         self.full_shot_threshold = args.fullshot
         self.detect_width = args.detect_width
+
+        #Erase background
+        if args.bg:
+            self.bgformula = []
+            for f in args.bg.split(','):
+                self.bgformula.append( [ f[0], f[1], int(f[2:]) ] )
+
+        if re.match( '[0-9a-fA-F]{6}', args.chroma):
+            self.chroma = ( int(args.chroma[4:6], 16), int(args.chroma[2:4], 16), int(args.chroma[0:2], 16) )
+        else:
+            print("Invalid chroma color format")
+
+        self.erode_dilate = args.erode_dilate
+
+        #Output related
         self.output_dir = args.output_dir
         if 'x' not in args.output_size:
             print("Invalid size ('x' should be exists in size)")
-            return
+            return False
+
         (self.output_width, self.output_height) = [ int(v) for v in args.output_size.split('x') ]
+        self.triplete_scale = args.triplete_scale
+        self.hide_display = args.hide_display
+
         print('Scale:', self.scale)
         print('Scene threshold:', self.scene_threshold)
         print('Overlap threshold:', self.overlap_threshold)
@@ -455,8 +540,15 @@ class FaceTracer:
         print('Full-shot threshold:', self.full_shot_threshold)
         print('Internal detect width:', self.detect_width)
         print('Output dir:', self.output_dir)
+        print('Background Detection:', args.bg)
+        print('Background chroma color:', args.chroma)
 
         self.video.set( cv2.CAP_PROP_POS_FRAMES, args.begin )
+        return True
+
+    def run(self, args):
+        if not self.init_variables(args):
+            return
 
         while True:
             if not self.read_frame():
@@ -492,9 +584,11 @@ class FaceTracer:
 
             cv2.imshow('Monitor', self.display_image)
             if self.output is not None:
+                self.erase_background()
                 if self.write_frame(args.max):
                     break
                 cv2.imshow('Output', self.display_output)
+
 
             if self.face_pos is not None:
                 (face_left, face_top, face_right, face_bottom) = self.face_pos
@@ -527,6 +621,11 @@ parser.add_argument("-e", "--end", type=int, default=-1, help="End frame")
 parser.add_argument("-m", "--max", type=int, default=5000, help="Maximum output images")
 parser.add_argument("-o", "--output", dest="output_dir", type=str, default="./output", help="Output directory")
 parser.add_argument("-x", "--output_size", dest="output_size", type=str, default="256x256", help="Output W x H size")
+parser.add_argument("-p", "--triplete_scale", dest="triplete_scale", type=float, default=1.0, help="Display triplete in scale TRIPLETE_SCALE")
+parser.add_argument("-B", "--bg", dest="bg", type=str, default='', help="Background area formula: 'X?n,[X?n[...]]' [X = H,S,V(Grayscale),R,G,B] [? = < >] [n = 0~255]")
+parser.add_argument("-E", "--erode", dest="erode_dilate", type=int, default=10, help="Erode/Dilate after finding background area")
+parser.add_argument("-C", "--chroma", dest="chroma", type=str, default='FFFFFF', help="Background filling color (default:FFFFFF; rgb)")
+parser.add_argument("-H", "--hide", dest="hide_display", action='store_true', default=False, help="Hide background intermediate images")
 parser.add_argument("picture_file", default=None, help="Reference face image file")
 parser.add_argument("video_file", default=None, help="Source video file")
 args = parser.parse_args()
