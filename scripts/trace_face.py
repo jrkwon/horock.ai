@@ -525,6 +525,7 @@ class FaceTracer:
 
         #Output related
         self.output_dir = args.output_dir
+        os.makedirs(self.output_dir)
         if 'x' not in args.output_size:
             print("Invalid size ('x' should be exists in size)")
             return False
