@@ -485,6 +485,13 @@ class FaceTracer:
 
         if 0 < frame_max <= self.output_count[output_size]:
             self.log('Maximum count reached: {}', frame_max)
+            src = output_size
+            dst = "%s/images" % (self.output_dir)
+            try:
+                os.unlink(dst)
+            except:
+                pass
+            os.symlink(src, dst, True)
             return True
 
         filename = "%s/%s/%06d.png" % (self.output_dir, output_size, self.output_count[output_size])
@@ -501,6 +508,19 @@ class FaceTracer:
         return False
 
     def init_variables(self, args):
+
+        def fix_dataset_path(p):
+            if os.path.exists(p):
+                return p
+            newpath = os.path.join(args.dataset_dir, p)
+            if os.path.exists(newpath):
+                return newpath
+            return p
+
+        args.picture_file = fix_dataset_path(args.picture_file)
+        args.video_file   = fix_dataset_path(args.video_file)
+
+        print("Name: ", args.name)
         print("Mode: ", args.mode)
         print("Picture: ", args.picture_file)
         print("Video  : ", args.video_file)
@@ -536,7 +556,10 @@ class FaceTracer:
         self.erode_dilate = args.erode_dilate
 
         #Output related
-        self.output_dir = '/'.join( filter( lambda p: p,  args.output_dir.split('/') ) ) + '/' + args.mode
+        if args.output_dir is None:
+            self.output_dir = os.path.join(args.dataset_dir, args.name, args.mode)
+        else:
+            self.output_dir = args.output_dir
         os.makedirs(self.output_dir, exist_ok=True)
         if 'x' not in args.output_size:
             print("Invalid size ('x' should be exists in size)")
@@ -632,14 +655,16 @@ parser.add_argument("-t", "--throttling", type=int, default=0, help="In same sce
 parser.add_argument("-b", "--begin", "--start", dest="begin", type=int, default=0, help="Start frame")
 parser.add_argument("-e", "--end", type=int, default=-1, help="End frame")
 parser.add_argument("-m", "--max", type=int, default=5000, help="Maximum output images")
-parser.add_argument("-o", "--output", dest="output_dir", type=str, default="./output", help="Output directory")
+parser.add_argument("-o", "--output", dest="output_dir", type=str, default=None, help="Output directory (default: <dataset>/<NAME>/<MODE>)")
 parser.add_argument("-x", "--output_size", dest="output_size", type=str, default="256x256", help="Output W x H size")
 parser.add_argument("-p", "--output_scale", dest="output_scale", type=float, default=1.0, help="Output monitoring scale")
 parser.add_argument("-B", "--bg", dest="bg", type=str, default='', help="Background area formula: 'X?n,[X?n[...]]' [X = H,S,V(Grayscale),R,G,B] [? = < >] [n = 0~255]")
 parser.add_argument("-E", "--erode", dest="erode_dilate", type=int, default=10, help="Erode/Dilate after finding background area")
+parser.add_argument("-D", "--dataset", dest="dataset_dir", type=str, default='datasets', help="Set dataset directory (default: datasets)")
 parser.add_argument("-C", "--chroma", dest="chroma", type=str, default='FFFFFF', help="Background filling color (default:FFFFFF; rgb)")
 parser.add_argument("-H", "--hide", dest="hide_display", action='store_true', default=False, help="Hide background intermediate images")
 parser.add_argument("mode", default=None, help="Run mode: train, test")
+parser.add_argument("name", default=None, help="Picture label")
 parser.add_argument("picture_file", default=None, help="Reference face image file")
 parser.add_argument("video_file", default=None, help="Source video file")
 args = parser.parse_args()
