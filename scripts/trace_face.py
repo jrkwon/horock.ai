@@ -517,8 +517,8 @@ class FaceTracer:
                 return newpath
             return p
 
-        args.picture_file = fix_dataset_path(args.picture_file)
-        args.video_file   = fix_dataset_path(args.video_file)
+        args.picture_file = fix_dataset_path(args.picture_file or args.name + ".png")
+        args.video_file   = fix_dataset_path(args.video_file or args.name + ".mp4")
 
         print("Name: ", args.name)
         print("Mode: ", args.mode)
@@ -663,10 +663,10 @@ parser.add_argument("-E", "--erode", dest="erode_dilate", type=int, default=10, 
 parser.add_argument("-D", "--dataset", dest="dataset_dir", type=str, default='datasets', help="Set dataset directory (default: datasets)")
 parser.add_argument("-C", "--chroma", dest="chroma", type=str, default='FFFFFF', help="Background filling color (default:FFFFFF; rgb)")
 parser.add_argument("-H", "--hide", dest="hide_display", action='store_true', default=False, help="Hide background intermediate images")
+parser.add_argument("-a", "--picture", dest="picture_file", default=None, help="Reference face image file: (default: NAME.png)")
+parser.add_argument("-v", "--video", dest="video_file", default=None, help="Source video file: (default: NAME.mp4)")
 parser.add_argument("mode", default=None, help="Run mode: train, test")
 parser.add_argument("name", default=None, help="Picture label")
-parser.add_argument("picture_file", default=None, help="Reference face image file")
-parser.add_argument("video_file", default=None, help="Source video file")
 args = parser.parse_args()
 
 try:
