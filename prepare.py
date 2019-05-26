@@ -582,10 +582,31 @@ class FaceTracer:
         self.video.set( cv2.CAP_PROP_POS_FRAMES, args.begin )
         return True
 
-    def run(self, args):
-        if not self.init_variables(args):
-            return
+    def make_images_symlink(self):
+        maxlength = 0
+        maxlength_dir = ''
+        for root, _, fnames in os.walk(self.output_dir):
+            dname = os.path.basename(root)
+            if dname == 'images':
+                continue
+            files = len(fnames)
+            print("Images count:", files, dname)
+            if maxlength < files:
+                maxlength = files
+                maxlength_dir = root
 
+        if maxlength == 0:
+            return
+        source = os.path.relpath(maxlength_dir, start=self.output_dir)
+        target = os.path.join(self.output_dir, 'images')
+        try:
+            os.unlink(target)
+        except:
+            pass
+        os.symlink(source, target)
+        print('Symlink created', maxlength_dir, '->', target)
+
+    def run(self, args):
         while True:
             if not self.read_frame():
                 break
@@ -671,6 +692,8 @@ args = parser.parse_args()
 
 try:
     trace = FaceTracer()
-    trace.run(args)
+    if trace.init_variables(args):
+        trace.run(args)
+        trace.make_images_symlink()
 except KeyboardInterrupt:
     print("\nStop!")

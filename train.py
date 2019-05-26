@@ -33,7 +33,7 @@ class HorockTrainOptions(TrainOptions):
         self.update_argument('--model', type=str, default='recycle_gan', help='chooses which model to use. cycle_gan, pix2pix, recycle_gan, test')
         self.update_argument('--which_model_netG', type=str, default='resnet_6blocks', help='selects model to use for netG')
         self.update_argument('--which_model_netP', type=str, default='unet_256', help='selects model to use for netP')
-        self.update_argument('--dataset_mode', type=str, default='unaligned_triplet', help='chooses how datasets are loaded. [unaligned | aligned | single]')
+        self.update_argument('--dataset_mode', type=str, default='unaligned_triplet', help='chooses how datasets are loaded. [unaligned | aligned | single | unaligned_triplet]')
         self.update_argument('--no_dropout', action='store_true', default=True, help='no dropout for the generator')
         self.update_argument('--identity', type=float, default=0., help='use identity mapping. Setting identity other than 1 has an effect of scaling the weight of the identity mapping loss. For example, if the weight of the identity loss should be 10 times smaller than the weight of the reconstruction loss, please set optidentity = 0.1')
         self.update_argument('--pool_size', type=int, default=0, help='the size of image buffer that stores previously generated images')
@@ -97,6 +97,7 @@ class HorockTrainOptions(TrainOptions):
 
         # save to the disk
         expr_dir = os.path.join(self.opt.checkpoints_dir, self.opt.name)
+        self.expr_dir = expr_dir
         util.mkdirs(expr_dir)
         file_name = os.path.join(expr_dir, 'opt.txt')
         with open(file_name, 'wt') as opt_file:
@@ -104,7 +105,6 @@ class HorockTrainOptions(TrainOptions):
             for k, v in sorted(args.items()):
                 opt_file.write('%s: %s\n' % (str(k), str(v)))
             opt_file.write('-------------- End ----------------\n')
-        return self.opt
         return self.opt
 
 def run():
@@ -120,6 +120,7 @@ def run():
     visualizer = Visualizer(opt)
     total_steps = 0
 
+    print("Save directory", model.save_dir)
     for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         epoch_start_time = time.time()
         epoch_iter = 0
