@@ -485,13 +485,6 @@ class FaceTracer:
 
         if 0 < frame_max <= self.output_count[output_size]:
             self.log('Maximum count reached: {}', frame_max)
-            src = output_size
-            dst = "%s/images" % (self.output_dir)
-            try:
-                os.unlink(dst)
-            except:
-                pass
-            os.symlink(src, dst, True)
             return True
 
         filename = "%s/%s/%06d.png" % (self.output_dir, output_size, self.output_count[output_size])
