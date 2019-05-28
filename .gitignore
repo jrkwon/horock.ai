@@ -3,5 +3,11 @@ download
 test*
 *.log
 datasets
+dataroot
+checkpoints
 !datasets/README.md
 dlib-models/*.dat
+nohup*
+*.png
+*.mkv
+*.mp4
