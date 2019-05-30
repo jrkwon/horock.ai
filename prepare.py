@@ -760,6 +760,8 @@ class FaceTracer:
             if not front:
                 self.video.set(cv2.CAP_PROP_POS_MSEC, float(self.time_pos + 300))
 
+        self.sample_pic_link(args)
+
     def sample_pic_link(self, args):
         sample = None
         for root, _, fnames in os.walk(self.output_dir):
@@ -799,7 +801,7 @@ parser.add_argument("-C", "--chroma", dest="chroma", type=str, default='FFFFFF',
 parser.add_argument("-H", "--hide", dest="hide_display", action='store_true', default=False, help="Hide background intermediate images")
 parser.add_argument("-a", "--picture", dest="picture_file", default=None, help="Reference face image file: (default: NAME.png)")
 parser.add_argument("-v", "--video", dest="video_file", default=None, help="Source video file: (default: NAME.mp4)")
-parser.add_argument("-S", "--samples", dest="samples", type=int, default=1000, help="Picture sample count for 'pic' mode (default: 1000)")
+parser.add_argument("-S", "--samples", dest="samples", type=int, default=1000, help="Picture sample count for 'pic' mode (default: 100)")
 parser.add_argument("mode", default=None, help="Run mode: train, test, pic (pic for picture sample 1000 images to datasets/NAME/NNNNN.png)")
 parser.add_argument("name", default=None, help="Picture label")
 args = parser.parse_args()
