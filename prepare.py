@@ -127,7 +127,7 @@ class FaceTracer:
         self.chroma = (255,255,255)
 
     def log(self, fmt, *args):
-        time_pos = "{} {:05d} {:02d}:{:02d}.{:03d}".format(self.count, self.frame_num, (self.time_pos // 1000) // 60, (self.time_pos // 1000) % 60, self.time_pos % 1000)
+        time_pos = "{:05d} {:02d}:{:02d}.{:03d}".format(self.frame_num, (self.time_pos // 1000) // 60, (self.time_pos // 1000) % 60, self.time_pos % 1000)
         fmt = '{}: {}'.format(time_pos, fmt)
         print(fmt.format(*args))
 
@@ -255,7 +255,10 @@ class FaceTracer:
         max_coords = np.max(shape_2d, axis=0)
 
         size = max_coords - min_coords
-        size = np.multiply(size, .8).astype(np.int32)
+        image_height = self.image.shape[0]
+        roi_height = size[1]
+        factor = min( 0.8, (image_height - roi_height)/(2 * roi_height) )
+        size = np.multiply(size, factor).astype(np.int32)
         pos  = np.array([0, size[1] * .25]).astype(np.int32)
         adj_min = min_coords - size - pos
         adj_max = max_coords + size - pos
@@ -301,7 +304,7 @@ class FaceTracer:
             overlap_ratio = self.calculate_overlap_ratio(self.roi, self.detect_output)
 
         if overlap_ratio < self.overlap_threshold:
-            self.log('ROI overlap < threhold: {:.2f} < {:.2f}', overlap_ratio, self.overlap_threshold)
+            self.log('ROI prev-current overlap < threhold: {:.2f} < {:.2f}', overlap_ratio, self.overlap_threshold)
             self.detect_output = None
             for roi in self.roi_history:
                 olap = self.calculate_overlap_ratio(self.roi, roi)
@@ -526,11 +529,6 @@ class FaceTracer:
             print("Invalid size ('x' should be exists in size)")
             return False
 
-        print("Name: ", args.name)
-        print("Mode: ", args.mode)
-        print("Picture: ", args.picture_file)
-        print("Video  : ", args.video_file)
-
         self.scale = args.scale
         self.scene_threshold = args.scene_threshold
 
@@ -557,6 +555,20 @@ class FaceTracer:
         self.output_scale = args.output_scale
         self.hide_display = args.hide_display
 
+        self.video = cv2.VideoCapture(args.video_file)
+        if not self.video.isOpened():
+            print("Can't open video source")
+            return False
+
+        #Read first frame
+        ret, firstframe = self.video.read()
+
+        self.video.set( cv2.CAP_PROP_POS_FRAMES, args.begin )
+
+        print("Name: ", args.name)
+        print("Mode: ", args.mode)
+        print("Picture: ", args.picture_file)
+        print("Video  : ", args.video_file)
         print('Scale:', self.scale)
         print('Scene threshold:', self.scene_threshold)
         print('Overlap threshold:', self.overlap_threshold)
@@ -567,12 +579,11 @@ class FaceTracer:
         print('Background Detection:', args.bg)
         print('Background chroma color:', args.chroma)
 
-        self.video = cv2.VideoCapture(args.video_file)
-        if not self.video.isOpened():
-            print("Can't open video source")
-            return False
-
-        self.video.set( cv2.CAP_PROP_POS_FRAMES, args.begin )
+        original_width  = firstframe.shape[1]
+        original_height = firstframe.shape[0]
+        detect_scale = self.detect_width / original_width
+        print('Video size: %sx%s' % (original_width, original_height))
+        print('Internal detect size: %sx%s (scale:%s)' % (self.detect_width, int(original_height * detect_scale), detect_scale))
 
         if not args.picture_file or not self.load_person_picture(args.picture_file):
             return False
@@ -660,7 +671,7 @@ class FaceTracer:
             if cv2.waitKey(self.rfps) == ord('q'):
               break
 
-    def calc_rotation(self, shape, showlines=False):
+    def calculate_rotation(self, shape, showlines=False):
 
         def distance(dot1, dot2):
             return int( math.sqrt( (dot1[0] - dot2[0]) * (dot1[0] - dot2[0]) + (dot1[1] - dot2[1]) * (dot1[1] - dot2[1]) ) )
@@ -722,7 +733,7 @@ class FaceTracer:
 
             shape = self.predictor(self.display_image, face)
             shape_2d = np.array([[p.x, p.y] for p in shape.parts()])
-            (angle, ratio, leye, reye, mouth) = self.calc_rotation(shape_2d, True)
+            (angle, ratio, leye, reye, mouth) = self.calculate_rotation(shape_2d, True)
 
             openness = []
             if abs(angle) < 10 and abs(ratio) < 5:
