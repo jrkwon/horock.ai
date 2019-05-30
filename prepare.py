@@ -127,7 +127,7 @@ class FaceTracer:
         self.chroma = (255,255,255)
 
     def log(self, fmt, *args):
-        time_pos = "{:05d} {:02d}:{:02d}.{:03d}".format(self.frame_num, (self.time_pos // 1000) // 60, (self.time_pos // 1000) % 60, self.time_pos % 1000)
+        time_pos = "{:05d}/{:05d} {:02d}:{:02d}.{:03d}".format(self.frame_num, self.total_frames, (self.time_pos // 1000) // 60, (self.time_pos // 1000) % 60, self.time_pos % 1000)
         fmt = '{}: {}'.format(time_pos, fmt)
         print(fmt.format(*args))
 
@@ -285,12 +285,14 @@ class FaceTracer:
         area1_size = (area1_max[0] - area1_min[0]) * (area1_max[1] - area1_min[1])
 
         (area2_min, area2_max) = area2
+        area2_size = (area2_max[0] - area2_min[0]) * (area2_max[1] - area2_min[1])
+
         overlap_min = ( max(area2_min[0], area1_min[0]), max(area2_min[1], area1_min[1]) )
         overlap_max = ( min(area2_max[0], area1_max[0]), min(area2_max[1], area1_max[1]) )
 
-        # Calculation ratio of prev-current-overlapped-area / current-crop
-        overlap_ratio  = (overlap_max[0] - overlap_min[0]) * (overlap_max[1] - overlap_min[1])
-        overlap_ratio /= area1_size
+        # Calculation ratio of prev-current-overlapped-area / current-crop and prev-crop
+        overlap_size  = (overlap_max[0] - overlap_min[0]) * (overlap_max[1] - overlap_min[1])
+        overlap_ratio = min( overlap_size / area1_size, overlap_size / area2_size )
         return overlap_ratio
 
     def update_output_area(self):
@@ -563,6 +565,7 @@ class FaceTracer:
         #Read first frame
         ret, firstframe = self.video.read()
 
+        self.total_frames = int(self.video.get(cv2.CAP_PROP_FRAME_COUNT))
         self.video.set( cv2.CAP_PROP_POS_FRAMES, args.begin )
 
         print("Name: ", args.name)
@@ -598,7 +601,7 @@ class FaceTracer:
             if dname == 'images':
                 continue
             files = len(fnames)
-            print("Images count:", files, dname)
+            print("Images count:", dname, files)
             if maxlength < files:
                 maxlength = files
                 maxlength_dir = root
@@ -827,6 +830,8 @@ try:
         face_trace.sample_pic(args)
         sys.exit(0)
 except KeyboardInterrupt:
-    if args.mode == "pic":
+    if args.mode == "train" or args.mode == 'test':
+        face_trace.make_images_symlink()
+    elif args.mode == "pic":
         face_trace.sample_pic_link(args)
     print("\nStop!")
