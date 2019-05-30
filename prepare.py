@@ -660,7 +660,7 @@ class FaceTracer:
             if cv2.waitKey(self.rfps) == ord('q'):
               break
 
-    def calc_rotation(self, shape):
+    def calc_rotation(self, shape, showlines=False):
 
         def distance(dot1, dot2):
             return int( math.sqrt( (dot1[0] - dot2[0]) * (dot1[0] - dot2[0]) + (dot1[1] - dot2[1]) * (dot1[1] - dot2[1]) ) )
@@ -683,12 +683,13 @@ class FaceTracer:
         reye  = atan(shape[46]-shape[47], shape[43]-shape[47])
         mouth = atan(shape[63]-shape[65], shape[65]-shape[67])
 
-        cv2.line(self.display_image, tuple(L), tuple(R), (0,255,0),1)
-        cv2.line(self.display_image, tuple(L), tuple(M), (255,0,0),2)
-        cv2.line(self.display_image, tuple(M), tuple(R), (255,0,0),2)
-        cv2.line(self.display_image, tuple(shape[40]), tuple(shape[37]), (255,0,0),2)
-        cv2.line(self.display_image, tuple(shape[43]), tuple(shape[46]), (255,0,0),2)
-        cv2.line(self.display_image, tuple(shape[63]), tuple(shape[67]), (255,0,0),2)
+        if showlines:
+            cv2.line(self.display_image, tuple(L), tuple(R), (0,255,0),1)
+            cv2.line(self.display_image, tuple(L), tuple(M), (255,0,0),2)
+            cv2.line(self.display_image, tuple(M), tuple(R), (255,0,0),2)
+            cv2.line(self.display_image, tuple(shape[40]), tuple(shape[37]), (255,0,0),2)
+            cv2.line(self.display_image, tuple(shape[43]), tuple(shape[46]), (255,0,0),2)
+            cv2.line(self.display_image, tuple(shape[63]), tuple(shape[67]), (255,0,0),2)
         return (angle1, ratio1, leye, reye, mouth)
 
     def sample_pic(self, args):
@@ -721,7 +722,7 @@ class FaceTracer:
 
             shape = self.predictor(self.display_image, face)
             shape_2d = np.array([[p.x, p.y] for p in shape.parts()])
-            (angle, ratio, leye, reye, mouth) = self.calc_rotation(shape_2d)
+            (angle, ratio, leye, reye, mouth) = self.calc_rotation(shape_2d, True)
 
             openness = []
             if abs(angle) < 10 and abs(ratio) < 5:
@@ -758,6 +759,23 @@ class FaceTracer:
             count += 1
             if not front:
                 self.video.set(cv2.CAP_PROP_POS_MSEC, float(self.time_pos + 300))
+
+    def sample_pic_link(self, args):
+        sample = None
+        for root, _, fnames in os.walk(self.output_dir):
+            sample = os.path.join(root, np.random.choice(fnames))
+
+        if sample is None:
+            print("\nPicking random image failed:", self.output_dir)
+            return
+        source = os.path.relpath(sample, start=args.dataset_dir)
+        target = os.path.join(args.dataset_dir, args.name + '.png')
+        try:
+            os.unlink(target)
+        except:
+            pass
+        os.symlink(source, target)
+        print('\nSample picture symlink created', source, '->', target)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--scale", type=float, default=1.0, help="Scale factor before processing (default: 1.0)")
@@ -796,4 +814,6 @@ try:
         face_trace.sample_pic(args)
         sys.exit(0)
 except KeyboardInterrupt:
+    if args.mode == "pic":
+        face_trace.sample_pic_link(args)
     print("\nStop!")
