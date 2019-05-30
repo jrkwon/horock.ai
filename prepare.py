@@ -2,6 +2,7 @@
 
 import cv2, dlib, sys, os
 import numpy as np
+import math
 import argparse
 import glob
 import face_recognition.api as face_recognition
@@ -502,29 +503,33 @@ class FaceTracer:
 
     def init_variables(self, args):
 
-        def fix_dataset_path(p):
+        def fix_dataset_path(p, *exts):
             if os.path.exists(p):
                 return p
-            newpath = os.path.join(args.dataset_dir, p)
-            if os.path.exists(newpath):
-                return newpath
-            return p
+            for ext in exts:
+                newpath = os.path.join(args.dataset_dir, p + ext)
+                print(newpath)
+                if os.path.exists(newpath):
+                    return newpath
+            return None
 
-        args.picture_file = fix_dataset_path(args.picture_file or args.name + ".png")
-        args.video_file   = fix_dataset_path(args.video_file or args.name + ".mp4")
+        args.picture_file = fix_dataset_path(args.picture_file or args.name, '.png', '.jpg')
+        args.video_file   = fix_dataset_path(args.video_file or args.name, '.mp4', '.mkv', '.avi', '.mov')
+
+        #Output related
+        if args.output_dir is None:
+            self.output_dir = os.path.join(args.dataset_dir, args.name, args.mode)
+        else:
+            self.output_dir = args.output_dir
+        os.makedirs(self.output_dir, exist_ok=True)
+        if 'x' not in args.output_size:
+            print("Invalid size ('x' should be exists in size)")
+            return False
 
         print("Name: ", args.name)
         print("Mode: ", args.mode)
         print("Picture: ", args.picture_file)
         print("Video  : ", args.video_file)
-
-        if not self.load_person_picture(args.picture_file):
-            return False
-
-        self.video = cv2.VideoCapture(args.video_file)
-        if not self.video.isOpened():
-            print("Can't open video source")
-            return False
 
         self.scale = args.scale
         self.scene_threshold = args.scene_threshold
@@ -548,16 +553,6 @@ class FaceTracer:
 
         self.erode_dilate = args.erode_dilate
 
-        #Output related
-        if args.output_dir is None:
-            self.output_dir = os.path.join(args.dataset_dir, args.name, args.mode)
-        else:
-            self.output_dir = args.output_dir
-        os.makedirs(self.output_dir, exist_ok=True)
-        if 'x' not in args.output_size:
-            print("Invalid size ('x' should be exists in size)")
-            return False
-
         (self.output_width, self.output_height) = [ int(v) for v in args.output_size.split('x') ]
         self.output_scale = args.output_scale
         self.hide_display = args.hide_display
@@ -572,7 +567,16 @@ class FaceTracer:
         print('Background Detection:', args.bg)
         print('Background chroma color:', args.chroma)
 
+        self.video = cv2.VideoCapture(args.video_file)
+        if not self.video.isOpened():
+            print("Can't open video source")
+            return False
+
         self.video.set( cv2.CAP_PROP_POS_FRAMES, args.begin )
+
+        if not args.picture_file or not self.load_person_picture(args.picture_file):
+            return False
+
         return True
 
     def make_images_symlink(self):
@@ -656,6 +660,104 @@ class FaceTracer:
             if cv2.waitKey(self.rfps) == ord('q'):
               break
 
+    def calc_rotation(self, shape):
+
+        def distance(dot1, dot2):
+            return int( math.sqrt( (dot1[0] - dot2[0]) * (dot1[0] - dot2[0]) + (dot1[1] - dot2[1]) * (dot1[1] - dot2[1]) ) )
+
+        def atan(dot1, dot2):
+            return int(10. * math.atan( (dot2[1] - dot1[1]) / (dot2[0] - dot1[0]) ) * 180. / math.pi) / 10.
+
+        L = shape[36]
+        M = shape[27]
+        R = shape[45]
+        angle1 = atan(L, R)
+        face_l = distance(L, M)
+        face_r = distance(R, M)
+
+        face_h = (face_l + face_r)
+        ratio1 = (face_r - face_l) * 100. / face_h
+        ratio1 = int(ratio1 * 10) / 10
+
+        leye  = atan(shape[40]-shape[41], shape[37]-shape[41])
+        reye  = atan(shape[46]-shape[47], shape[43]-shape[47])
+        mouth = atan(shape[63]-shape[65], shape[65]-shape[67])
+
+        cv2.line(self.display_image, tuple(L), tuple(R), (0,255,0),1)
+        cv2.line(self.display_image, tuple(L), tuple(M), (255,0,0),2)
+        cv2.line(self.display_image, tuple(M), tuple(R), (255,0,0),2)
+        cv2.line(self.display_image, tuple(shape[40]), tuple(shape[37]), (255,0,0),2)
+        cv2.line(self.display_image, tuple(shape[43]), tuple(shape[46]), (255,0,0),2)
+        cv2.line(self.display_image, tuple(shape[63]), tuple(shape[67]), (255,0,0),2)
+        return (angle1, ratio1, leye, reye, mouth)
+
+    def sample_pic(self, args):
+        count = 0
+        while count < args.samples:
+            if cv2.waitKey(self.rfps) == ord('q'):
+                break
+
+            ret = self.read_frame()
+            if not ret:
+                print("End of file")
+                break
+
+            filename = "%s/%06d.png" % (self.output_dir, self.frame_num)
+
+            faces = self.detector(self.display_image, 1)
+
+            if len(faces) != 1:
+                print( count, "frame", self.frame_num, len(faces))
+                cv2.imshow('Sample', self.display_image)
+                self.video.set(cv2.CAP_PROP_POS_MSEC, float(self.time_pos + 500))
+                continue
+
+            front = False
+            leyeopen = False
+            reyeopen = False
+            mouthopen = False
+
+            face = faces[0]
+
+            shape = self.predictor(self.display_image, face)
+            shape_2d = np.array([[p.x, p.y] for p in shape.parts()])
+            (angle, ratio, leye, reye, mouth) = self.calc_rotation(shape_2d)
+
+            openness = []
+            if abs(angle) < 10 and abs(ratio) < 5:
+                front = True
+                openness.append('FRONT')
+            if abs(leye) > 30:
+                leyeopen = True
+                openness.append('L-EYE')
+            if abs(leye) > 30:
+                reyeopen = True
+                openness.append('R-EYE')
+            if abs(mouth) > 10:
+                mouthopen = True
+                openness.append('MOUTH')
+
+            print( count, "frame", self.frame_num, len(faces), angle, ratio, ' '.join(openness))
+
+            if front and leyeopen and reyeopen:
+                color = (255, 0, 0)
+                cv2.imwrite(filename, self.original_image)
+            else:
+                color = (0, 0, 255)
+
+            cv2.putText(self.display_image, filename, (20,20), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255), 1, cv2.LINE_AA)
+            description = "LR Nodding(%s), LR Rotate(%s), L-Eye(%s) R-Eye(%s) Mouth(%s)" % (angle, ratio, leye, reye, mouth) 
+            cv2.putText(self.display_image, description, (20,40), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255), 1, cv2.LINE_AA)
+            description = ' '.join(openness)
+            cv2.putText(self.display_image, description, (20,60), cv2.FONT_HERSHEY_SIMPLEX, .5, color, 1, cv2.LINE_AA)
+            for s in shape_2d:
+                #s = np.multiply(s, self.detect2display_scale).astype(np.int32)
+                cv2.circle(self.display_image, center=tuple(s), radius=1, color=(255, 255, 255), thickness=1, lineType=cv2.LINE_AA)
+            cv2.imshow('Sample', self.display_image)
+
+            count += 1
+            if not front:
+                self.video.set(cv2.CAP_PROP_POS_MSEC, float(self.time_pos + 300))
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--scale", type=float, default=1.0, help="Scale factor before processing (default: 1.0)")
@@ -679,14 +781,19 @@ parser.add_argument("-C", "--chroma", dest="chroma", type=str, default='FFFFFF',
 parser.add_argument("-H", "--hide", dest="hide_display", action='store_true', default=False, help="Hide background intermediate images")
 parser.add_argument("-a", "--picture", dest="picture_file", default=None, help="Reference face image file: (default: NAME.png)")
 parser.add_argument("-v", "--video", dest="video_file", default=None, help="Source video file: (default: NAME.mp4)")
-parser.add_argument("mode", default=None, help="Run mode: train, test")
+parser.add_argument("-S", "--samples", dest="samples", type=int, default=1000, help="Picture sample count for 'pic' mode (default: 1000)")
+parser.add_argument("mode", default=None, help="Run mode: train, test, pic (pic for picture sample 1000 images to datasets/NAME/NNNNN.png)")
 parser.add_argument("name", default=None, help="Picture label")
 args = parser.parse_args()
 
 try:
-    trace = FaceTracer()
-    if trace.init_variables(args):
-        trace.run(args)
-        trace.make_images_symlink()
+    face_trace = FaceTracer()
+    if face_trace.init_variables(args) and args.mode != 'pic':
+        face_trace.run(args)
+        face_trace.make_images_symlink()
+
+    if args.mode == "pic":
+        face_trace.sample_pic(args)
+        sys.exit(0)
 except KeyboardInterrupt:
     print("\nStop!")
