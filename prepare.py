@@ -54,9 +54,6 @@ class FaceTracer:
         self.time_pos = 0.
         self.frame_num = 0
 
-        # Video frame history (recent 5 frames?)
-        self.history = []
-
         self.rfps = 1
 
         # Monitoring image scale
@@ -64,9 +61,12 @@ class FaceTracer:
 
         # Face detection parameter
         self.image = None
+        self.display_image = None
+        self.original_image = None
         self.detect_width = 320
         self.detect_scale = None
         self.detect2display_scale = None
+        self.heat_map = np.zeros((256,256), np.uint8)
 
         # Face detection hotspot
         self.roi = None
@@ -164,12 +164,13 @@ class FaceTracer:
         if not ret:
             return ret
 
+        self.resize_images()
+        return ret
+
+    def resize_images(self):
+
         #self.log('Origin Size: {}x{}px', self.video.get( cv2.CAP_PROP_FRAME_WIDTH ), self.video.get(cv2.CAP_PROP_FRAME_HEIGHT) )
         original_width = self.original_image.shape[1]
-
-        if len(self.history) > 5:
-            self.history.pop(0)
-        self.history.append( { 'image': self.original_image, 'output_area': None, 'full_shot': False })
 
         #Monitoring image: self.display_image (BGR)
         # self.scale = display_width / original_width
@@ -193,7 +194,6 @@ class FaceTracer:
         scale = 64. / self.image.shape[1]
         self.scene_image = cv2.resize(self.image, (0,0), 0, scale, scale)
         self.scene_image = cv2.cvtColor(self.scene_image, cv2.COLOR_RGB2HSV, cv2.INTER_LANCZOS4)
-        return ret
 
     def fast_forward(self, msec):
         self.log("Fast forward {} msecs", msec)
@@ -278,8 +278,6 @@ class FaceTracer:
         if self.picture_ratio > self.full_shot_threshold:
             self.full_shot = True
 
-        self.history[-1]['full_shot'] = self.full_shot
-
     def calculate_overlap_ratio(self, area1, area2):
         (area1_min, area1_max) = area1
         area1_size = (area1_max[0] - area1_min[0]) * (area1_max[1] - area1_min[1])
@@ -340,7 +338,6 @@ class FaceTracer:
                 self.output[0][0], self.output[0][1],
                 self.output[1][0] - self.output[0][0], self.output[1][1] - self.output[0][1] )
 
-        self.history[-1]['output_area'] = self.output
         self.overlap_ratio = overlap_ratio
         self.output_image = self.original_image[self.output[0][1]:self.output[1][1], self.output[0][0]:self.output[1][0]]
         self.display_output = cv2.resize(self.output_image, (self.output_width,self.output_height))
@@ -382,9 +379,17 @@ class FaceTracer:
         self.update_output_area()
 
         ## For display ........
+        landmarks = []
         for s in shape_2d:
             s = np.multiply(s, self.detect2display_scale).astype(np.int32)
+            landmarks.append(s)
             cv2.circle(self.display_image, center=tuple(s), radius=1, color=(255, 255, 255), thickness=1, lineType=cv2.LINE_AA)
+
+        (angle, ratio, leye, reye, mouth) = self.calculate_rotation(landmarks, True)
+        byte_angle = 128 + int(127 * angle / 90)
+        byte_ratio = 128 + int(127 * ratio / 100)
+        cv2.circle(self.heat_map, center=tuple([byte_angle, byte_ratio]), color=(255,255,255), radius=1, thickness=2, lineType=cv2.LINE_AA)
+        self.log('Angle:{:.1f}({}) Ratio:{:.1f}({})', angle, byte_angle, ratio, byte_ratio)
 
         adj_min = tuple(np.multiply(self.roi[0], self.detect2display_scale).astype(np.int32))
         adj_max = tuple(np.multiply(self.roi[1], self.detect2display_scale).astype(np.int32))
@@ -519,11 +524,14 @@ class FaceTracer:
             return None
 
         args.picture_file = fix_dataset_path(args.picture_file or args.name, '.png', '.jpg')
-        args.video_file   = fix_dataset_path(args.video_file or args.name, '.mp4', '.mkv', '.avi', '.mov')
+        args.video_file   = fix_dataset_path(args.video_file or args.name, '.mp4', '.mkv', '.avi', '.mov', 'webm')
 
         #Output related
         if args.output_dir is None:
-            self.output_dir = os.path.join(args.dataset_dir, args.name, args.mode)
+            subdir = args.mode
+            if args.mode in ('heat', ):
+                subdir = 'train'
+            self.output_dir = os.path.join(args.dataset_dir, args.name, subdir)
         else:
             self.output_dir = args.output_dir
         os.makedirs(self.output_dir, exist_ok=True)
@@ -588,6 +596,9 @@ class FaceTracer:
         print('Video size: %sx%s' % (original_width, original_height))
         print('Internal detect size: %sx%s (scale:%s)' % (self.detect_width, int(original_height * detect_scale), detect_scale))
 
+        # Init heat map
+        cv2.line(self.heat_map, tuple([0,128]), tuple([255,128]), (0,0,255), 1)
+        cv2.line(self.heat_map, tuple([128,0]), tuple([128,255]), (0,0,255), 1)
         if not args.picture_file or not self.load_person_picture(args.picture_file):
             return False
 
@@ -671,6 +682,7 @@ class FaceTracer:
                     '(throttling)' if throttling else ''
                 )
 
+            cv2.imshow('Heat Map', self.heat_map)
             if cv2.waitKey(self.rfps) == ord('q'):
               break
 
@@ -689,7 +701,7 @@ class FaceTracer:
         face_l = distance(L, M)
         face_r = distance(R, M)
 
-        face_h = (face_l + face_r)
+        face_h = (face_r + face_l)
         ratio1 = (face_r - face_l) * 100. / face_h
         ratio1 = int(ratio1 * 10) / 10
 
@@ -699,12 +711,21 @@ class FaceTracer:
 
         if showlines:
             cv2.line(self.display_image, tuple(L), tuple(R), (0,255,0),1)
-            cv2.line(self.display_image, tuple(L), tuple(M), (255,0,0),2)
-            cv2.line(self.display_image, tuple(M), tuple(R), (255,0,0),2)
-            cv2.line(self.display_image, tuple(shape[40]), tuple(shape[37]), (255,0,0),2)
-            cv2.line(self.display_image, tuple(shape[43]), tuple(shape[46]), (255,0,0),2)
-            cv2.line(self.display_image, tuple(shape[63]), tuple(shape[67]), (255,0,0),2)
+            cv2.line(self.display_image, tuple(L), tuple(M), (0,255,255),2)
+            cv2.line(self.display_image, tuple(M), tuple(R), (0,255,255),2)
+            cv2.line(self.display_image, tuple(shape[40]), tuple(shape[37]), (0,255,255),2)
+            cv2.line(self.display_image, tuple(shape[43]), tuple(shape[46]), (0,255,255),2)
+            cv2.line(self.display_image, tuple(shape[63]), tuple(shape[67]), (0,255,255),2)
         return (angle1, ratio1, leye, reye, mouth)
+
+
+    def get_landmarks(self, image):
+        faces = self.detector(image, 1)
+        if len(faces) != 1:
+            return (None, faces)
+        shape = self.predictor(image, faces[0])
+        landmarks = np.array([[p.x, p.y] for p in shape.parts()])
+        return (landmarks, faces)
 
     def sample_pic(self, args):
         count = 0
@@ -719,9 +740,9 @@ class FaceTracer:
 
             filename = "%s/%06d.png" % (self.output_dir, self.frame_num)
 
-            faces = self.detector(self.display_image, 1)
+            (landmarks, faces) = self.get_landmarks(self.display_image)
 
-            if len(faces) != 1:
+            if landmarks is None:
                 print( count, "frame", self.frame_num, len(faces))
                 cv2.imshow('Sample', self.display_image)
                 self.video.set(cv2.CAP_PROP_POS_MSEC, float(self.time_pos + 500))
@@ -731,12 +752,7 @@ class FaceTracer:
             leyeopen = False
             reyeopen = False
             mouthopen = False
-
-            face = faces[0]
-
-            shape = self.predictor(self.display_image, face)
-            shape_2d = np.array([[p.x, p.y] for p in shape.parts()])
-            (angle, ratio, leye, reye, mouth) = self.calculate_rotation(shape_2d, True)
+            (angle, ratio, leye, reye, mouth) = self.calculate_rotation(landmarks, True)
 
             openness = []
             if abs(angle) < 10 and abs(ratio) < 5:
@@ -765,7 +781,7 @@ class FaceTracer:
             cv2.putText(self.display_image, description, (20,40), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255), 1, cv2.LINE_AA)
             description = ' '.join(openness)
             cv2.putText(self.display_image, description, (20,60), cv2.FONT_HERSHEY_SIMPLEX, .5, color, 1, cv2.LINE_AA)
-            for s in shape_2d:
+            for s in landmarks:
                 #s = np.multiply(s, self.detect2display_scale).astype(np.int32)
                 cv2.circle(self.display_image, center=tuple(s), radius=1, color=(255, 255, 255), thickness=1, lineType=cv2.LINE_AA)
             cv2.imshow('Sample', self.display_image)
@@ -793,13 +809,54 @@ class FaceTracer:
         os.symlink(source, target)
         print('\nSample picture symlink created', source, '->', target)
 
+    def get_images(self, images_dir):
+        images = []
+        for root, _, fnames in os.walk(images_dir):
+            images += [ os.path.join(root, fname) for fname in sorted(fnames)]
+        return images
+
+    def show_heat_map(self, args):
+        sample = None
+        print(self.output_dir)
+        images_dir = os.path.join(self.output_dir, 'images')
+        dupcheck = {}
+        for image_file in self.get_images(images_dir):
+            self.original_image = cv2.imread(image_file)
+            height = self.original_image.shape[0]
+
+            #Cut the first rectangle
+            self.original_image = self.original_image[:, 0:height, 0:height]
+            self.resize_images()
+
+            cv2.imshow('Sample', self.display_image)
+            if cv2.waitKey(self.rfps) == ord('q'):
+              break
+            (landmarks, faces) = self.get_landmarks(self.original_image)
+            if landmarks is None:
+                continue
+            (angle, ratio, leye, reye, mouth) = self.calculate_rotation(landmarks, True)
+
+            byte_angle = 128 + int(127 * angle / 90)
+            byte_ratio = 128 + int(127 * ratio / 100)
+            cv2.circle(self.heat_map, center=tuple([byte_angle, byte_ratio]), color=(255,255,255), radius=1, thickness=2, lineType=cv2.LINE_AA)
+            k = '(%s,%s)' % (byte_angle, byte_ratio)
+            if k in dupcheck:
+                dupcheck[k] += 1
+            else:
+                dupcheck[k] = 1
+            print(image_file, 'Angle:', angle, 'Ratio:', ratio, byte_angle, byte_ratio, 'Dup:', dupcheck[k])
+
+            cv2.imshow('Heat Map', self.heat_map)
+        heatmap_file = os.path.join(self.output_dir, 'heatmap.png')
+        cv2.imwrite(heatmap_file, self.heat_map)
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--scale", type=float, default=1.0, help="Scale factor before processing (default: 1.0)")
 parser.add_argument("-l", "--log_file", type=str, default=None, help="Face detect log")
 parser.add_argument("-c", "--scene_threshold", type=float, default=80.0, help="Scene change detection diff-hsv threshold (default: 80.0)")
 parser.add_argument("-r", "--reco", type=float, default=0.5, help="Face diff tolerence (default: 0.5)")
 parser.add_argument("-f", "--fullshot", type=float, default=0.15, help="Threshold of fullshot detect,  crop-area / whole-area ratio")
-parser.add_argument("-w", "--detect_width", type=int, default=320, help="Width to resize for internal processing to detect faces")
+parser.add_argument("-w", "--detect_width", type=int, default=512, help="Width to resize for internal processing to detect faces")
 parser.add_argument("-L", "--overlap", type=float, default=.8, help="Threshold of changing new cropping area, (overlap of prev & curr)/curr")
 parser.add_argument("-t", "--throttling", type=int, default=0, help="In same scene, skip inspection next to THROTTLING frames")
 parser.add_argument("-b", "--begin", "--start", dest="begin", type=int, default=0, help="Start frame")
@@ -822,13 +879,15 @@ args = parser.parse_args()
 
 try:
     face_trace = FaceTracer()
-    if face_trace.init_variables(args) and args.mode != 'pic':
-        face_trace.run(args)
-        face_trace.make_images_symlink()
-
+    inited = face_trace.init_variables(args)
     if args.mode == "pic":
         face_trace.sample_pic(args)
-        sys.exit(0)
+    elif args.mode == "heat":
+        face_trace.show_heat_map(args)
+    else:
+        if inited:
+            face_trace.run(args)
+            face_trace.make_images_symlink()
 except KeyboardInterrupt:
     if args.mode == "train" or args.mode == 'test':
         face_trace.make_images_symlink()
