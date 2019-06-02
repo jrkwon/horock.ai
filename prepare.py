@@ -532,6 +532,18 @@ class FaceTracer:
             if args.mode in ('heat', ):
                 subdir = 'train'
             self.output_dir = os.path.join(args.dataset_dir, args.name, subdir)
+
+            if args.mode.startswith('test'):
+                test_dir = os.path.join(args.dataset_dir, args.name, 'test')
+                try:
+                    os.unlink(test_dir)
+                except:
+                    pass
+                if os.path.exists(test_dir):
+                    raise Exception("Remove test dir first: %s" % test_dir)
+                else:
+                    output_dir = os.path.relpath(self.output_dir, start=os.path.dirname(self.output_dir))
+                    os.symlink(output_dir, test_dir)
         else:
             self.output_dir = args.output_dir
         os.makedirs(self.output_dir, exist_ok=True)
@@ -604,7 +616,7 @@ class FaceTracer:
 
         return True
 
-    def make_images_symlink(self):
+    def make_images_symlink(self, args):
         maxlength = 0
         maxlength_dir = ''
         for root, _, fnames in os.walk(self.output_dir):
@@ -885,12 +897,14 @@ try:
     elif args.mode == "heat":
         face_trace.show_heat_map(args)
     else:
-        if inited:
+        if inited and (args.mode == 'train' or args.mode.startswith('test')):
             face_trace.run(args)
-            face_trace.make_images_symlink()
+            face_trace.make_images_symlink(args)
+        else:
+            print("Check your mode (pic, heat, train, test{NNN..}:", args.mode)
 except KeyboardInterrupt:
     if args.mode == "train" or args.mode == 'test':
-        face_trace.make_images_symlink()
+        face_trace.make_images_symlink(args)
     elif args.mode == "pic":
         face_trace.sample_pic_link(args)
     print("\nStop!")
