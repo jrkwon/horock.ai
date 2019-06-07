@@ -28,6 +28,7 @@ class HorockMkvideoOptions(BaseOptions):
         self.update_argument('--results_dir', type=str, default='./results', help='saved results directory.')
         self.update_argument('--datasets', required=False, default='./datasets', help='path to write output mp4 file')
         self.update_argument('--dataroot', required=False, default='./dataroot', help='path to run GAN')
+        self.update_argument('--fps', required=False, type=float, default=30., help='output video frames/sec')
         self.update_argument('nameA', help='Actor person as ./datasets/nameA')
         self.update_argument('nameB', help='Target person as ./datasets/nameB')
         self.update_argument('mode', help='Image sequence mode, fake_A, fake_B, real_A, real_B (You can concatename multiple modes with "+", e.g: real_A+fake_B)')
@@ -94,7 +95,7 @@ def run():
     fourcc = 'MP4V'
     fourcc = cv2.VideoWriter_fourcc(*fourcc)
     filename = os.path.join(opt.datasets, '%s-%s.%s.mp4' % (opt.nameA, opt.nameB, '_'.join(opt.modes)))
-    out = cv2.VideoWriter( filename, fourcc, 30, (width,height))
+    out = cv2.VideoWriter( filename, fourcc, opt.fps, (width,height))
 
     if not out.isOpened():
         print("Can't open output file")
