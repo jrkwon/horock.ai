@@ -119,6 +119,4 @@ try:
     run()
 except KeyboardInterrupt:
     print("Bye bye...")
-except:
-    print(traceback.format_exc())
 
