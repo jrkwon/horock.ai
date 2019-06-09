@@ -502,7 +502,7 @@ class FaceTracer:
         self.output_count[output_size] += 1
         if mode == 'train':
             output_img = np.concatenate(self.output_triplets, axis=1)
-        elif mode == 'test':
+        elif mode.startswith('test'):
             output_img = self.display_output
         else:
             return False
@@ -901,9 +901,9 @@ try:
             face_trace.run(args)
             face_trace.make_images_symlink(args)
         else:
-            print("Check your mode (pic, heat, train, test{NNN..}:", args.mode)
+            print("Check your mode (pic, heat, train, test{NNN..}):", args.mode)
 except KeyboardInterrupt:
-    if args.mode == "train" or args.mode == 'test':
+    if args.mode == "train" or args.mode.startswith('test'):
         face_trace.make_images_symlink(args)
     elif args.mode == "pic":
         face_trace.sample_pic_link(args)
