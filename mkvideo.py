@@ -4,6 +4,7 @@ import os
 import cv2
 import sys
 import time
+import numpy as np
 import traceback
 
 sys.path.append( os.path.dirname(sys.argv[0]) + '/Recycle-GAN')
@@ -105,11 +106,14 @@ def run():
     count = count / len(opt.modes)
     i = 0
     while i < count:
+        output_img = []
         for mode in opt.modes:
             f = images[mode][i]
             print(f, end='\r')
             img = cv2.imread(f)
-            out.write(img)
+            output_img.append(img)
+        img = np.concatenate(output_img, axis=1)
+        out.write(img)
         i += 1
     print('')
     out.release()
