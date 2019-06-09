@@ -354,6 +354,12 @@ class FaceTracer:
             return False
 
         faces = self.detector(self.sample, 1)
+
+        if len(faces) == 0:
+            cv2.imshow('Sam', self.sample)
+            self.log("Skip, no face detected: {}", self.scene_change_log)
+            return False
+
         interested_idx = self.recognize(faces)
         if interested_idx == -1:
             self.skip_in_scene += 1
