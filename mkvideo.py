@@ -66,6 +66,7 @@ def run():
     for mode in opt.modes:
         images[mode] = []
 
+    count = 0
     for root, _, fnames in os.walk(opt.images_dir):
         #fnames = filter( lambda fname: '_'.join(fname.split('.')[0].split('_')[1:]) in opt.modes, fnames )
         count = 0
@@ -89,7 +90,7 @@ def run():
     height = 0
     for mode in opt.modes:
         width += cv2.imread(images[mode][0]).shape[1]
-        height += cv2.imread(images[mode][0]).shape[0]
+        height = cv2.imread(images[mode][0]).shape[0]
 
     print("Output size = %dx%d" % (width, height))
     fourcc = 'MP4V'
