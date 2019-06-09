@@ -94,7 +94,7 @@ def run():
         height = cv2.imread(images[mode][0]).shape[0]
 
     print("Output size = %dx%d" % (width, height))
-    fourcc = 'MP4V'
+    fourcc = 'mp4v'
     fourcc = cv2.VideoWriter_fourcc(*fourcc)
     filename = os.path.join(opt.datasets, '%s-%s.%s.mp4' % (opt.nameA, opt.nameB, '_'.join(opt.modes)))
     out = cv2.VideoWriter( filename, fourcc, opt.fps, (width,height))
