@@ -32,7 +32,7 @@ class HorockMkvideoOptions(BaseOptions):
         self.update_argument('--fps', required=False, type=float, default=30., help='output video frames/sec')
         self.update_argument('nameA', help='Actor person as ./datasets/nameA')
         self.update_argument('nameB', help='Target person as ./datasets/nameB')
-        self.update_argument('mode', help='Image sequence mode, fake_A, fake_B, real_A, real_B (You can concatename multiple modes with "+", e.g: real_A+fake_B)')
+        self.update_argument('mode', help='Image sequence mode, AB(real_A+fake_B), BA(real_B+fake_A), or fake_A, fake_B, real_A, real_B (You can concatename multiple modes with "+", e.g: real_A+fake_B)')
 
     def make_symlink(self, source, target):
         source = os.path.abspath(source)
@@ -57,7 +57,12 @@ class HorockMkvideoOptions(BaseOptions):
 
         names = '%s-%s' % (self.opt.nameA, self.opt.nameB)
         self.opt.images_dir = os.path.join(self.opt.results_dir, names, 'test_%s' % self.opt.epoch, 'images')
-        self.opt.modes = self.opt.mode.split('+')
+        mode = self.opt.mode
+        if mode == 'AB':
+            mode = 'real_A+fake_B'
+        elif mode == 'BA':
+            mode = 'real_B+fake_A'
+        self.opt.modes = mode.split('+')
         return self.opt
 
 def run():
@@ -96,7 +101,8 @@ def run():
     print("Output size = %dx%d" % (width, height))
     fourcc = 'mp4v'
     fourcc = cv2.VideoWriter_fourcc(*fourcc)
-    filename = os.path.join(opt.datasets, '%s-%s.%s.mp4' % (opt.nameA, opt.nameB, '_'.join(opt.modes)))
+    modedesc = opt.mode.replace('+', '').replace('_', '')
+    filename = os.path.join(opt.results_dir, '%s-%s-%s-%s.mp4' % (opt.nameA, opt.nameB, modedesc, opt.epoch))
     out = cv2.VideoWriter( filename, fourcc, opt.fps, (width,height))
 
     if not out.isOpened():
