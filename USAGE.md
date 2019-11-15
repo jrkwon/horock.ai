@@ -140,7 +140,7 @@ train 영상과 달리 test 영상은 test1, test2, test3 과 같은 명령으�
 
 ```
     ./test.py foo1 foo2
-
+```
 
 비디오합성
 =========
@@ -151,3 +151,11 @@ train 영상과 달리 test 영상은 test1, test2, test3 과 같은 명령으�
     or
 
     ./mkvideo.py foo1 foo2 AB
+
+기타
+====
+
+파일에서 얼굴을 찾을 수 있는지 확인하는 명령
+```
+    ./prepare.py facecheck foo
+```

@@ -911,6 +911,9 @@ try:
         face_trace.sample_pic(args)
     elif args.mode == "heat":
         face_trace.show_heat_map(args)
+    elif args.mode == "facecheck":
+        if not face_trace.load_person_picture(args.picture_file):
+            print("Failed")
     else:
         if inited and (args.mode == 'train' or args.mode.startswith('test')):
             face_trace.run(args)
