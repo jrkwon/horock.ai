@@ -530,7 +530,7 @@ class FaceTracer:
             return None
 
         args.picture_file = fix_dataset_path(args.picture_file or args.name, '.png', '.jpg')
-        args.video_file   = fix_dataset_path(args.video_file or args.name, '.mp4', '.mkv', '.avi', '.mov', 'webm')
+        args.video_file   = fix_dataset_path(args.video_file or args.name, '.mp4', '.mkv', '.avi', '.mov', '.webm')
 
         #Output related
         if args.output_dir is None:
