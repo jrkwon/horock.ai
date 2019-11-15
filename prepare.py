@@ -210,6 +210,10 @@ class FaceTracer:
         self.output = None
         self.output_image = None
 
+    def imshow(self, msg, img):
+        if not self.hide_display:
+            cv2.imshow(msg, img)
+
     def scene_changed(self):
         #Idea borrowed: https://github.com/Breakthrough/PySceneDetect ... scenedetect/detectors/content_detector.py
         self.scene_change_log = ''
@@ -356,7 +360,7 @@ class FaceTracer:
         faces = self.detector(self.sample, 1)
 
         if len(faces) == 0:
-            cv2.imshow('Sam', self.sample)
+            self.imshow('Sam', self.sample)
             self.log("Skip, no face detected: {}", self.scene_change_log)
             return False
 
@@ -384,7 +388,11 @@ class FaceTracer:
         self.calculate_full_shot()
         self.update_output_area()
 
+        if self.hide_display:
+            return True
+
         ## For display ........
+
         landmarks = []
         for s in shape_2d:
             s = np.multiply(s, self.detect2display_scale).astype(np.int32)
@@ -433,8 +441,7 @@ class FaceTracer:
                     channels['G'] = green
                     channels['B'] = blue
                     rgb = np.concatenate([red, green, blue], axis=1)
-                    if not self.hide_display:
-                        cv2.imshow('RGB', rgb)
+                    self.imshow('RGB', rgb)
             elif ch in ('H', 'S', 'V'):
                 if hsv is None:
                     hsv = cv2.cvtColor(self.display_output, cv2.COLOR_BGR2HSV)
@@ -447,8 +454,7 @@ class FaceTracer:
                     sat = cv2.cvtColor(sat.copy(), cv2.COLOR_GRAY2BGR)
                     gray = cv2.cvtColor(gray.copy(), cv2.COLOR_GRAY2BGR)
                     hsv = np.concatenate([hue, sat, gray], axis=1)
-                    if not self.hide_display:
-                        cv2.imshow('HSV', hsv)
+                    self.imshow('HSV', hsv)
             else:
                 raise Exception('Invalid channel', ch)
 
@@ -461,8 +467,7 @@ class FaceTracer:
                 thresh = cv2.erode(thresh, None, iterations=self.erode_dilate)
                 thresh = cv2.dilate(thresh, None, iterations=self.erode_dilate)
             mask = cv2.bitwise_and(thresh, thresh, mask = mask) if mask is None else thresh
-        if not self.hide_display:
-            cv2.imshow('Mask', mask)
+        self.imshow('Mask', mask)
 
         cnts = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         cnts = cnts[0 if len(cnts) == 2 else 1]
@@ -513,8 +518,9 @@ class FaceTracer:
         else:
             return False
         cv2.imwrite(filename, output_img)
-        output_img = cv2.resize(output_img, (0,0), 0, self.output_scale, self.output_scale)
-        cv2.imshow('Write', output_img)
+        if not self.hide_display:
+            output_img = cv2.resize(output_img, (0,0), 0, self.output_scale, self.output_scale)
+            self.imshow('Write', output_img)
         return False
 
     def init_variables(self, args):
@@ -675,16 +681,16 @@ class FaceTracer:
             if do_inspect:
                 self.inspect()
 
-            if self.count % 5 == 0:
+            if self.count % 5 == 0 and not self.hide_display:
                 sample = cv2.cvtColor(self.sample, cv2.COLOR_RGB2BGR)
-                cv2.imshow('roi', sample)
+                self.imshow('roi', sample)
 
-            cv2.imshow('Monitor', self.display_image)
+            self.imshow('Monitor', self.display_image)
             if self.output is not None:
                 self.erase_background()
                 if self.write_frame(args.mode, args.max):
                     break
-                #cv2.imshow('Output', self.display_output)
+                #self.imshow('Output', self.display_output)
 
 
             if self.face_pos is not None:
@@ -700,7 +706,7 @@ class FaceTracer:
                     '(throttling)' if throttling else ''
                 )
 
-            cv2.imshow('Heat Map', self.heat_map)
+            self.imshow('Heat Map', self.heat_map)
             if cv2.waitKey(self.rfps) == ord('q'):
               break
 
@@ -710,6 +716,8 @@ class FaceTracer:
             return int( math.sqrt( (dot1[0] - dot2[0]) * (dot1[0] - dot2[0]) + (dot1[1] - dot2[1]) * (dot1[1] - dot2[1]) ) )
 
         def atan(dot1, dot2):
+            if dot1[0] == dot2[0]:
+                return 90
             return int(10. * math.atan( (dot2[1] - dot1[1]) / (dot2[0] - dot1[0]) ) * 180. / math.pi) / 10.
 
         L = shape[36]
@@ -762,7 +770,7 @@ class FaceTracer:
 
             if landmarks is None:
                 print( count, "frame", self.frame_num, len(faces))
-                cv2.imshow('Sample', self.display_image)
+                self.imshow('Sample', self.display_image)
                 self.video.set(cv2.CAP_PROP_POS_MSEC, float(self.time_pos + 500))
                 continue
 
@@ -794,15 +802,16 @@ class FaceTracer:
             else:
                 color = (0, 0, 255)
 
-            cv2.putText(self.display_image, filename, (20,20), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255), 1, cv2.LINE_AA)
-            description = "LR Nodding(%s), LR Rotate(%s), L-Eye(%s) R-Eye(%s) Mouth(%s)" % (angle, ratio, leye, reye, mouth) 
-            cv2.putText(self.display_image, description, (20,40), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255), 1, cv2.LINE_AA)
-            description = ' '.join(openness)
-            cv2.putText(self.display_image, description, (20,60), cv2.FONT_HERSHEY_SIMPLEX, .5, color, 1, cv2.LINE_AA)
-            for s in landmarks:
-                #s = np.multiply(s, self.detect2display_scale).astype(np.int32)
-                cv2.circle(self.display_image, center=tuple(s), radius=1, color=(255, 255, 255), thickness=1, lineType=cv2.LINE_AA)
-            cv2.imshow('Sample', self.display_image)
+            if not self.hide_display:
+                cv2.putText(self.display_image, filename, (20,20), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255), 1, cv2.LINE_AA)
+                description = "LR Nodding(%s), LR Rotate(%s), L-Eye(%s) R-Eye(%s) Mouth(%s)" % (angle, ratio, leye, reye, mouth) 
+                cv2.putText(self.display_image, description, (20,40), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255), 1, cv2.LINE_AA)
+                description = ' '.join(openness)
+                cv2.putText(self.display_image, description, (20,60), cv2.FONT_HERSHEY_SIMPLEX, .5, color, 1, cv2.LINE_AA)
+                for s in landmarks:
+                    #s = np.multiply(s, self.detect2display_scale).astype(np.int32)
+                    cv2.circle(self.display_image, center=tuple(s), radius=1, color=(255, 255, 255), thickness=1, lineType=cv2.LINE_AA)
+                self.imshow('Sample', self.display_image)
 
             count += 1
             if not front:
@@ -846,7 +855,7 @@ class FaceTracer:
             self.original_image = self.original_image[:, 0:height, 0:height]
             self.resize_images()
 
-            cv2.imshow('Sample', self.display_image)
+            self.imshow('Sample', self.display_image)
             if cv2.waitKey(self.rfps) == ord('q'):
               break
             (landmarks, faces) = self.get_landmarks(self.original_image)
@@ -864,7 +873,7 @@ class FaceTracer:
                 dupcheck[k] = 1
             print(image_file, 'Angle:', angle, 'Ratio:', ratio, byte_angle, byte_ratio, 'Dup:', dupcheck[k])
 
-            cv2.imshow('Heat Map', self.heat_map)
+            self.imshow('Heat Map', self.heat_map)
         heatmap_file = os.path.join(self.output_dir, 'heatmap.png')
         cv2.imwrite(heatmap_file, self.heat_map)
 
