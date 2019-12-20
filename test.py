@@ -38,6 +38,7 @@ class HorockTestOptions(TestOptions):
         self.update_argument('--results_dir', type=str, default='./results', help='saves results here.')
         self.update_argument('--datasets', required=False, default='./datasets', help='path to hold training images directories')
         self.update_argument('--dataroot', required=False, default='./dataroot', help='path to run GAN')
+        self.update_argument('--display_id', required=False, type=int, default='1', help='Display ID (default:1, disabled:0)')
         self.update_argument('nameA', help='Actor person as ./datasets/nameA')
         self.update_argument('nameB', help='Target person as ./datasets/nameB')
 

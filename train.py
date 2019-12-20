@@ -121,6 +121,7 @@ def run():
     total_steps = 0
 
     print("Save directory", model.save_dir)
+    print("Display id", opt.display_id)
     for epoch in range(opt.epoch_count, opt.niter + opt.niter_decay + 1):
         epoch_start_time = time.time()
         epoch_iter = 0
