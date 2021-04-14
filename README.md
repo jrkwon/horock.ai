@@ -14,7 +14,7 @@ mkvideo.py: make video
 ## Environment
 - If 
   - no X window is available, see USAGE-X-Window.md.
-  - you use MacOS, see USAGE-Iterm2.md 를 참고하세요.
+  - you use MacOS, see USAGE-Iterm2.md.
 - Activate the Anaconda env,`conda-horock`
 ```
     . conda-horock
