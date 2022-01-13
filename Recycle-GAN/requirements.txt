@@ -1,6 +1,6 @@
 pytorch==0.4.1
 torchvision==0.2.1
-pillow==5.4.1
+pillow==9.0.0
 dominate==2.3.5
 cython==0.28.5
 visdom==0.1.8.8
